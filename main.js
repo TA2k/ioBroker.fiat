@@ -59,6 +59,9 @@ class Fiat extends utils.Adapter {
                             this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/vhr", "vhr").catch(() => {
                                 this.log.error("get vehicles vhr failed");
                             });
+                            this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/svla/status", "svla").catch(() => {
+                                this.log.error("get vehicles svla failed");
+                            });
                         });
                         this.appUpdateInterval = setInterval(() => {
                             this.idArray.forEach((vin) => {
@@ -70,6 +73,9 @@ class Fiat extends utils.Adapter {
                                 });
                                 this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/vhr", "vhr").catch(() => {
                                     this.log.error("get vehicles vhr failed");
+                                });
+                                this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/svla/status", "svla").catch(() => {
+                                    this.log.error("get vehicles svla failed");
                                 });
                             });
                         }, this.config.interval * 60 * 1000);
@@ -367,8 +373,12 @@ class Fiat extends utils.Adapter {
                 });
         });
     }
-    getVehicleStatus(vin, url, path) {
+    getVehicleStatus(vin, url, path, data) {
         return new Promise((resolve, reject) => {
+            let method = "GET";
+            if (data) {
+                method = "POST";
+            }
             const headers = {
                 Host: "channels.sdpr-01.fcagcv.com",
                 "content-type": "application/json",
@@ -389,10 +399,10 @@ class Fiat extends utils.Adapter {
             const signed = aws4.sign(
                 {
                     host: "channels.sdpr-01.fcagcv.com",
-
+                    body: data,
                     path: url,
                     service: "execute-api",
-                    method: "GET",
+                    method: method,
                     region: "eu-west-1",
                     headers: headers,
                 },
@@ -400,12 +410,13 @@ class Fiat extends utils.Adapter {
             );
             headers["Authorization"] = signed.headers["Authorization"];
             axios({
-                method: "get",
+                method: method,
                 host: "channels.sdpr-01.fcagcv.com",
                 jar: this.cookieJar,
                 withCredentials: true,
                 url: "https://channels.sdpr-01.fcagcv.com" + url,
                 headers: headers,
+                data: data,
             })
                 .then((response) => {
                     if (!response.data) {
@@ -414,13 +425,15 @@ class Fiat extends utils.Adapter {
                         return;
                     }
                     this.log.debug(JSON.stringify(response.data));
-                    this.extractKeys(this, vin + "." + path, response.data, "service");
+                    this.extractKeys(this, vin + "." + path, response.data, "itemKey");
                     resolve();
                 })
                 .catch((error) => {
                     if (error.response && error.response.status === 403) {
                         this.log.info("403 Error relogin in 30 seconds");
-                        this.clearTimeout(this.reLoginTimeout());
+
+                        error.response && this.log.debug(JSON.stringify(error.response.data));
+                        this.clearTimeout(this.reLoginTimeout);
                         this.reLoginTimeout = this.setTimeout(() => {
                             this.login().catch(() => {
                                 this.log.error("Relogin failed restart adapter");
