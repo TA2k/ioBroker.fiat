@@ -75,6 +75,7 @@ class Fiat extends utils.Adapter {
             axios({
                 method: "get",
                 jar: this.cookieJar,
+                withCredentials: true,
                 url: "https://loginmyuconnect.fiat.com/accounts.webSdkBootstrap?apiKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fvehicle-services&sdk=js_latest&sdkBuild=12234&format=json",
                 headers: {
                     accept: "*/*",
@@ -317,6 +318,7 @@ class Fiat extends utils.Adapter {
                 method: "get",
                 host: "channels.sdpr-01.fcagcv.com",
                 jar: this.cookieJar,
+                withCredentials: true,
                 url: "https://channels.sdpr-01.fcagcv.com/v4/accounts/" + this.UID + "/vehicles?stage=ALL",
                 headers: headers,
             })
@@ -385,6 +387,7 @@ class Fiat extends utils.Adapter {
                 method: "get",
                 host: "channels.sdpr-01.fcagcv.com",
                 jar: this.cookieJar,
+                withCredentials: true,
                 url: "https://channels.sdpr-01.fcagcv.com/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status",
                 headers: headers,
             }).then((response) => {
