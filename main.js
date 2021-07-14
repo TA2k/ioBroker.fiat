@@ -258,7 +258,7 @@ class Fiat extends utils.Adapter {
                                                         this.login().catch((error) => {
                                                             this.log.error("Refresh token failed");
                                                         });
-                                                    }, 23.5 * 60 * 60 * 1000);
+                                                    }, 0.9 * 60 * 60 * 1000);
                                                     resolve();
                                                 })
                                                 .catch((error) => {
@@ -420,12 +420,19 @@ class Fiat extends utils.Adapter {
                 .catch((error) => {
                     if (error.response && error.response.status === 403) {
                         this.log.info("403 Error relogin in 30 seconds");
+                        this.clearTimeout(this.reLoginTimeout());
                         this.reLoginTimeout = this.setTimeout(() => {
-                            this.login();
+                            this.login().catch(() => {
+                                this.log.error("Relogin failed restart adapter");
+                                this.reLoginTimeout = this.setTimeout(() => {
+                                    this.restart();
+                                }, 1000 * 60 * 5);
+                            });
                         }, 1000 * 30);
+                        return;
                     }
                     this.log.error(error);
-                    this.log.error("GetVehicles status failed" + path);
+                    this.log.error("GetVehicles information failed: " + path);
                     error.response && this.log.error(JSON.stringify(error.response.data));
                     reject(error);
                 });
