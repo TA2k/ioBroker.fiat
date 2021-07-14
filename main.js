@@ -39,6 +39,8 @@ class Fiat extends utils.Adapter {
 
         this.idArray = [];
         this.refreshTokenInterval = null;
+        this.appUpdateInterval = null;
+        this.reLoginTimeout = null;
         this.extractKeys = extractKeys;
         this.setState("info.connection", false, true);
         this.login()
@@ -404,20 +406,29 @@ class Fiat extends utils.Adapter {
                 withCredentials: true,
                 url: "https://channels.sdpr-01.fcagcv.com" + url,
                 headers: headers,
-            }).then((response) => {
-                if (!response.data) {
-                    this.log.error("Get vehicles failed: " + path);
-                    reject();
-                    return;
-                }
-                this.log.debug(JSON.stringify(response.data));
-                this.extractKeys(this, vin + "." + path, response.data, "service");
-            });
-        }).catch((error) => {
-            this.log.error(error);
-            this.log.error("GetVehicles status failed" + path);
-            error.response && this.log.error(JSON.stringify(error.response.data));
-            reject();
+            })
+                .then((response) => {
+                    if (!response.data) {
+                        this.log.error("Get vehicles failed: " + path);
+                        reject();
+                        return;
+                    }
+                    this.log.debug(JSON.stringify(response.data));
+                    this.extractKeys(this, vin + "." + path, response.data, "service");
+                    resolve();
+                })
+                .catch((error) => {
+                    if (error.response && error.response.status === 403) {
+                        this.log.info("403 Error relogin in 30 seconds");
+                        this.reLoginTimeout = this.setTimeout(() => {
+                            this.login();
+                        }, 1000 * 30);
+                    }
+                    this.log.error(error);
+                    this.log.error("GetVehicles status failed" + path);
+                    error.response && this.log.error(JSON.stringify(error.response.data));
+                    reject(error);
+                });
         });
     }
 
@@ -441,8 +452,9 @@ class Fiat extends utils.Adapter {
     onUnload(callback) {
         try {
             callback();
-            this.clearInterval(refreshTokenInterval);
-            this.clearInterval(appUpdateInterval);
+            this.clearInterval(this.refreshTokenInterval);
+            this.clearInterval(this.appUpdateInterval);
+            this.clearInterval(this.reLoginTimeout);
         } catch (e) {
             callback();
         }
