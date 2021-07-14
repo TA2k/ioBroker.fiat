@@ -36,6 +36,7 @@ class Fiat extends utils.Adapter {
     async onReady() {
         axiosCookieJarSupport(axios);
         this.cookieJar = new tough.CookieJar();
+
         this.idArray = [];
         this.refreshTokenInterval = null;
         this.extractKeys = extractKeys;
@@ -44,6 +45,24 @@ class Fiat extends utils.Adapter {
             .then(() => {
                 this.setState("info.connection", true, true);
                 this.log.info("Login successful");
+                this.getVehicles()
+                    .then(() => {
+                        this.idArray.forEach((element) => {
+                            this.getVehicleStatus(element).catch(() => {
+                                this.log.error("get vehicles status failed");
+                            });
+                        });
+                        this.appUpdateInterval = setInterval(() => {
+                            this.idArray.forEach((element) => {
+                                this.getVehicleStatus(element).catch(() => {
+                                    this.log.error("get vehicles status failed");
+                                });
+                            });
+                        }, this.config.interval * 60 * 1000);
+                    })
+                    .catch(() => {
+                        this.log.error("get vehicles failed");
+                    });
             })
             .catch(() => {
                 this.log.error("Login failed");
@@ -54,178 +73,202 @@ class Fiat extends utils.Adapter {
     login() {
         return new Promise((resolve, reject) => {
             axios({
-                method: "post",
+                method: "get",
                 jar: this.cookieJar,
-                url: "https://loginmyuconnect.fiat.com/accounts.login",
+                url: "https://loginmyuconnect.fiat.com/accounts.webSdkBootstrap?apiKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fvehicle-services&sdk=js_latest&sdkBuild=12234&format=json",
                 headers: {
                     accept: "*/*",
-                    "content-type": "application/x-www-form-urlencoded",
                     origin: "https://myuconnect.fiat.com",
-                    "accept-language": "de-de",
                     "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                    referer: "https://myuconnect.fiat.com/de/de/login",
+                    "accept-language": "de-de",
+                    referer: "https://myuconnect.fiat.com/de/de/vehicle-services",
                 },
-                data: [
-                    "loginID=" + this.config.user,
-                    "password=" + this.config.password,
-                    "sessionExpiration=86400",
-                    "targetEnv=jssdk",
-                    "include=profile,data,emails,subscriptions,preferences,",
-                    "includeUserInfo=true",
-                    "loginMode=standard",
-                    "lang=de0de",
-                    'riskContext={"b0":52569,"b2":8,"b5":1}',
-                    "APIKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI",
-                    "source=showScreenSet",
-                    "sdk=js_latest",
-                    "authMode=cookie",
-                    "pageURL=https://myuconnect.fiat.com/de/de/login",
-                    "sdkBuild=12234",
-                    "format=json",
-                ].join("&"),
             })
                 .then((response) => {
                     if (!response.data) {
-                        this.log.error("Login failed maybe incorrect login information");
+                        this.log.error("first page failed");
                         reject();
                         return;
                     }
                     this.log.debug(JSON.stringify(response.data));
-                    if (!response.data.sessionInfo) {
-                        this.log.error("sessionInfo missing");
-                        reject();
-                        return;
-                    }
-                    this.loginToken = response.data.sessionInfo.login_token;
-                    this.UID = response.data.userInfo.UID;
-                    this.extractKeys(this, "general", response.data);
+
                     axios({
-                        method: "get",
+                        method: "post",
                         jar: this.cookieJar,
-                        url: [
-                            "https://loginmyuconnect.fiat.com/accounts.getJWT?fields=profile.firstName,profile.lastName,profile.email,country,locale,data.disclaimerCodeGSDP,data.GSDPisVerified",
+                        withCredentials: true,
+                        url: "https://loginmyuconnect.fiat.com/accounts.login",
+                        headers: {
+                            accept: "*/*",
+                            "content-type": "application/x-www-form-urlencoded",
+                            origin: "https://myuconnect.fiat.com",
+                            "accept-language": "de-de",
+                            "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
+                            referer: "https://myuconnect.fiat.com/de/de/login",
+                        },
+                        data: [
+                            "loginID=" + this.config.user,
+                            "password=" + this.config.password,
+                            "sessionExpiration=86400",
+                            "targetEnv=jssdk",
+                            "include=profile,data,emails,subscriptions,preferences,",
+                            "includeUserInfo=true",
+                            "loginMode=standard",
+                            "lang=de0de",
+                            'riskContext={"b0":52569,"b2":8,"b5":1}',
                             "APIKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI",
+                            "source=showScreenSet",
                             "sdk=js_latest",
-                            "login_token=" + this.loginToken,
                             "authMode=cookie",
-                            "pageURL=https://myuconnect.fiat.com/de/de/dashboard",
+                            "pageURL=https://myuconnect.fiat.com/de/de/login",
                             "sdkBuild=12234",
                             "format=json",
                         ].join("&"),
-                        headers: {
-                            accept: "*/*",
-                            origin: "https://myuconnect.fiat.com",
-                            "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                            "accept-language": "de-de",
-                            referer: "https://myuconnect.fiat.com/de/de/dashboard",
-                        },
                     })
                         .then((response) => {
                             if (!response.data) {
-                                this.log.error("JWT failed maybe incorrect login information");
+                                this.log.error("Login failed maybe incorrect login information");
                                 reject();
                                 return;
                             }
                             this.log.debug(JSON.stringify(response.data));
-                            if (!response.data.id_token) {
-                                this.log.error("id_token missing");
+                            if (!response.data.sessionInfo) {
+                                this.log.error("sessionInfo missing");
                                 reject();
                                 return;
                             }
-                            this.idToken = response.data.id_token;
+                            this.loginToken = response.data.sessionInfo.login_token;
+                            this.UID = response.data.userInfo.UID;
+                            this.extractKeys(this, "general", response.data);
                             axios({
-                                method: "post",
-                                url: "https://authz.sdpr-01.fcagcv.com/v2/cognito/identity/token",
+                                method: "get",
+                                jar: this.cookieJar,
+                                withCredentials: true,
+                                url:
+                                    "https://loginmyuconnect.fiat.com/accounts.getJWT?fields=profile.firstName%2Cprofile.lastName%2Cprofile.email%2Ccountry%2Clocale%2Cdata.disclaimerCodeGSDP%2Cdata.GSDPisVerified&APIKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&sdk=js_latest&login_token=" +
+                                    this.loginToken +
+                                    "&authMode=cookie&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fdashboard&sdkBuild=12234&format=json",
                                 headers: {
-                                    "content-type": "application/json",
-                                    "x-clientapp-version": "1.0",
-                                    clientrequestid: this.randomString(16),
                                     accept: "*/*",
-                                    locale: "de_de",
-                                    "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
-                                    "accept-language": "de-de",
                                     origin: "https://myuconnect.fiat.com",
                                     "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
+                                    "accept-language": "de-de",
                                     referer: "https://myuconnect.fiat.com/de/de/dashboard",
-                                    "x-originator-type": "web",
                                 },
-                                data: JSON.stringify({
-                                    gigya_token: this.idToken,
-                                }),
                             })
                                 .then((response) => {
                                     if (!response.data) {
-                                        this.log.error("fca failed maybe incorrect login information");
+                                        this.log.error("JWT failed maybe incorrect login information");
                                         reject();
                                         return;
                                     }
                                     this.log.debug(JSON.stringify(response.data));
-                                    if (!response.data.Token) {
-                                        this.log.error("Token missing");
+                                    if (!response.data.id_token) {
+                                        this.log.error("id_token missing");
                                         reject();
                                         return;
                                     }
-                                    this.token = response.data.Token;
-                                    const data = JSON.stringify({
-                                        IdentityId: "eu-west-1:6f7882c6-4775-47b8-9eae-298ea0a088e6",
-                                        Logins: {
-                                            "cognito-identity.amazonaws.com": this.token,
-                                        },
-                                    });
+                                    this.idToken = response.data.id_token;
                                     axios({
                                         method: "post",
-                                        url: "https://cognito-identity.eu-west-1.amazonaws.com/",
+                                        url: "https://authz.sdpr-01.fcagcv.com/v2/cognito/identity/token",
                                         headers: {
-                                            "content-type": "application/x-amz-json-1.1",
+                                            "content-type": "application/json",
+                                            "x-clientapp-version": "1.0",
+                                            clientrequestid: this.randomString(16),
                                             accept: "*/*",
-                                            "x-amz-user-agent": "aws-sdk-js/2.283.1 callback",
+                                            locale: "de_de",
+                                            "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
                                             "accept-language": "de-de",
                                             origin: "https://myuconnect.fiat.com",
-                                            "x-amz-content-sha256": crypto.createHash("sha256").update(data).digest("hex"),
                                             "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
                                             referer: "https://myuconnect.fiat.com/de/de/dashboard",
-                                            "x-amz-target": "AWSCognitoIdentityService.GetCredentialsForIdentity",
+                                            "x-originator-type": "web",
                                         },
-                                        data: data,
+                                        data: JSON.stringify({
+                                            gigya_token: this.idToken,
+                                        }),
                                     })
                                         .then((response) => {
                                             if (!response.data) {
-                                                this.log.error("amz failed maybe incorrect login information");
+                                                this.log.error("fca failed maybe incorrect login information");
                                                 reject();
                                                 return;
                                             }
                                             this.log.debug(JSON.stringify(response.data));
-                                            this.amz = JSON.parse(response.data);
-                                            if (!this.amz.Credentials) {
-                                                this.log.error("Credentials missing");
+                                            if (!response.data.Token) {
+                                                this.log.error("Token missing");
                                                 reject();
                                                 return;
                                             }
+                                            this.token = response.data.Token;
+                                            const data = JSON.stringify({
+                                                IdentityId: "eu-west-1:6f7882c6-4775-47b8-9eae-298ea0a088e6",
+                                                Logins: {
+                                                    "cognito-identity.amazonaws.com": this.token,
+                                                },
+                                            });
+                                            axios({
+                                                method: "post",
+                                                url: "https://cognito-identity.eu-west-1.amazonaws.com/",
+                                                headers: {
+                                                    "content-type": "application/x-amz-json-1.1",
+                                                    accept: "*/*",
+                                                    "x-amz-user-agent": "aws-sdk-js/2.283.1 callback",
+                                                    "accept-language": "de-de",
+                                                    origin: "https://myuconnect.fiat.com",
+                                                    "x-amz-content-sha256": crypto.createHash("sha256").update(data).digest("hex"),
+                                                    "user-agent":
+                                                        "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
+                                                    referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                                                    "x-amz-target": "AWSCognitoIdentityService.GetCredentialsForIdentity",
+                                                },
+                                                data: data,
+                                            })
+                                                .then((response) => {
+                                                    if (!response.data) {
+                                                        this.log.error("amz failed maybe incorrect login information");
+                                                        reject();
+                                                        return;
+                                                    }
+                                                    this.log.debug(JSON.stringify(response.data));
+                                                    this.amz = response.data;
+                                                    if (!this.amz.Credentials) {
+                                                        this.log.error("Credentials missing");
+                                                        reject();
+                                                        return;
+                                                    }
 
-                                            this.refreshTokenInterval = setInterval(() => {
-                                                // this.refreshToken().catch((error) => {
-                                                //     this.log.error("Refresh token failed");
-                                                // });
-                                            }, 60 * 60 * 1000);
-                                            resolve();
+                                                    this.refreshTokenInterval = setInterval(() => {
+                                                        this.login().catch((error) => {
+                                                            this.log.error("Refresh token failed");
+                                                        });
+                                                    }, 23.5 * 60 * 60 * 1000);
+                                                    resolve();
+                                                })
+                                                .catch((error) => {
+                                                    this.log.error(error);
+                                                    this.log.error("amz Token failed");
+                                                    error.response && this.log.error(JSON.stringify(error.response.data));
+                                                    reject();
+                                                });
                                         })
                                         .catch((error) => {
                                             this.log.error(error);
-                                            this.log.error("amz Token failed");
+                                            this.log.error("fca Token failed");
                                             error.response && this.log.error(JSON.stringify(error.response.data));
                                             reject();
                                         });
                                 })
                                 .catch((error) => {
                                     this.log.error(error);
-                                    this.log.error("fca Token failed");
+                                    this.log.error("JWT Token failed");
                                     error.response && this.log.error(JSON.stringify(error.response.data));
                                     reject();
                                 });
                         })
                         .catch((error) => {
                             this.log.error(error);
-                            this.log.error("JWT Token failed");
+                            this.log.error("Login failed");
                             error.response && this.log.error(JSON.stringify(error.response.data));
                             reject();
                         });
@@ -240,7 +283,23 @@ class Fiat extends utils.Adapter {
     }
     getVehicles() {
         return new Promise((resolve, reject) => {
-            // aws4.sign() will sign and modify these options, ready to pass to http.request
+            const headers = {
+                Host: "channels.sdpr-01.fcagcv.com",
+                "content-type": "application/json",
+                "x-clientapp-version": "1.0",
+                clientrequestid: this.randomString(16),
+                accept: "application/json, text/plain, */*",
+                "x-amz-date": this.amzDate(),
+                "x-amz-security-token": this.amz.Credentials.SessionToken,
+                locale: "de_de",
+                "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
+                "accept-language": "de-de",
+                "x-clientapp-name": "CWP",
+                origin: "https://myuconnect.fiat.com",
+                "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
+                referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                "x-originator-type": "web",
+            };
             const signed = aws4.sign(
                 {
                     host: "channels.sdpr-01.fcagcv.com",
@@ -248,52 +307,18 @@ class Fiat extends utils.Adapter {
                     service: "execute-api",
                     method: "GET",
                     region: "eu-west-1",
-                    headers: {
-                        Host: "channels.sdpr-01.fcagcv.com",
-                        "content-type": "application/json",
-                        "x-clientapp-version": "1.0",
-                        clientrequestid: this.randomString(16),
-                        accept: "application/json, text/plain, */*",
-                        "x-amz-date": this.amzDate(),
-                        "x-amz-security-token": this.amz.Credentials.SessionToken,
-                        locale: "de_de",
-                        "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
-                        "accept-language": "de-de",
-                        "x-clientapp-name": "CWP",
-                        origin: "https://myuconnect.fiat.com",
-                        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                        referer: "https://myuconnect.fiat.com/de/de/dashboard",
-                        "x-originator-type": "web",
-                    },
+                    headers: headers,
                 },
                 { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
             );
             this.log.debug(signed);
+            headers["Authorization"] = signed.headers["Authorization"];
             axios({
                 method: "get",
                 host: "channels.sdpr-01.fcagcv.com",
-                path: "/v4/accounts/" + this.UID + "/vehicles?stage=ALL",
-                service: "execute-api",
                 jar: this.cookieJar,
                 url: "https://channels.sdpr-01.fcagcv.com/v4/accounts/" + this.UID + "/vehicles?stage=ALL",
-                headers: {
-                    Host: "channels.sdpr-01.fcagcv.com",
-                    "content-type": "application/json",
-                    "x-clientapp-version": "1.0",
-                    clientrequestid: this.randomString(16),
-                    accept: "application/json, text/plain, */*",
-
-                    "x-amz-date": this.amzDate(),
-                    "x-amz-security-token": this.amz.Credentials.SessionToken,
-                    locale: "de_de",
-                    "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
-                    "accept-language": "de-de",
-                    "x-clientapp-name": "CWP",
-                    origin: "https://myuconnect.fiat.com",
-                    "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                    referer: "https://myuconnect.fiat.com/de/de/dashboard",
-                    "x-originator-type": "web",
-                },
+                headers: headers,
             })
                 .then((response) => {
                     if (!response.data) {
@@ -313,7 +338,8 @@ class Fiat extends utils.Adapter {
                             native: {},
                         });
 
-                        this.extractKeys(this, element.vin + ".general", element);
+                        this.extractKeys(this, element.vin + ".general", element, "service");
+                        resolve();
                     });
                 })
                 .catch((error) => {
@@ -322,6 +348,59 @@ class Fiat extends utils.Adapter {
                     error.response && this.log.error(JSON.stringify(error.response.data));
                     reject();
                 });
+        });
+    }
+    getVehicleStatus(vin) {
+        return new Promise((resolve, reject) => {
+            const headers = {
+                Host: "channels.sdpr-01.fcagcv.com",
+                "content-type": "application/json",
+                "x-clientapp-version": "1.0",
+                clientrequestid: this.randomString(16),
+                accept: "application/json, text/plain, */*",
+                "x-amz-date": this.amzDate(),
+                "x-amz-security-token": this.amz.Credentials.SessionToken,
+                locale: "de_de",
+                "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
+                "accept-language": "de-de",
+                "x-clientapp-name": "CWP",
+                origin: "https://myuconnect.fiat.com",
+                "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
+                referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                "x-originator-type": "web",
+            };
+            const signed = aws4.sign(
+                {
+                    host: "channels.sdpr-01.fcagcv.com",
+                    path: "/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status",
+                    service: "execute-api",
+                    method: "GET",
+                    region: "eu-west-1",
+                    headers: headers,
+                },
+                { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
+            );
+            headers["Authorization"] = signed.headers["Authorization"];
+            axios({
+                method: "get",
+                host: "channels.sdpr-01.fcagcv.com",
+                jar: this.cookieJar,
+                url: "https://channels.sdpr-01.fcagcv.com/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status",
+                headers: headers,
+            }).then((response) => {
+                if (!response.data) {
+                    this.log.error("Get vehicles  statusfailed");
+                    reject();
+                    return;
+                }
+                this.log.debug(JSON.stringify(response.data));
+                this.extractKeys(this, vin + ".status", response.data, "service");
+            });
+        }).catch((error) => {
+            this.log.error(error);
+            this.log.error("GetVehicles failed");
+            error.response && this.log.error(JSON.stringify(error.response.data));
+            reject();
         });
     }
     randomString(length) {
@@ -345,6 +424,7 @@ class Fiat extends utils.Adapter {
         try {
             callback();
             this.clearInterval(refreshTokenInterval);
+            this.clearInterval(appUpdateInterval);
         } catch (e) {
             callback();
         }
