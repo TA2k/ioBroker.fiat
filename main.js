@@ -47,9 +47,15 @@ class Fiat extends utils.Adapter {
                 this.log.info("Login successful");
                 this.getVehicles()
                     .then(() => {
-                        this.idArray.forEach((element) => {
-                            this.getVehicleStatus(element).catch(() => {
+                        this.idArray.forEach((vin) => {
+                            this.getVehicleStatus(vin, "/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status", "status").catch(() => {
                                 this.log.error("get vehicles status failed");
+                            });
+                            this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/location/lastknown", "location").catch(() => {
+                                this.log.error("get vehicles location failed");
+                            });
+                            this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/vhr", "vhr").catch(() => {
+                                this.log.error("get vehicles vhr failed");
                             });
                         });
                         this.appUpdateInterval = setInterval(() => {
@@ -109,7 +115,7 @@ class Fiat extends utils.Adapter {
                         data: [
                             "loginID=" + this.config.user,
                             "password=" + this.config.password,
-                            "sessionExpiration=86400",
+                            "sessionExpiration=7776000",
                             "targetEnv=jssdk",
                             "include=profile,data,emails,subscriptions,preferences,",
                             "includeUserInfo=true",
@@ -352,7 +358,7 @@ class Fiat extends utils.Adapter {
                 });
         });
     }
-    getVehicleStatus(vin) {
+    getVehicleStatus(vin, url, path) {
         return new Promise((resolve, reject) => {
             const headers = {
                 Host: "channels.sdpr-01.fcagcv.com",
@@ -374,7 +380,8 @@ class Fiat extends utils.Adapter {
             const signed = aws4.sign(
                 {
                     host: "channels.sdpr-01.fcagcv.com",
-                    path: "/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status",
+
+                    path: url,
                     service: "execute-api",
                     method: "GET",
                     region: "eu-west-1",
@@ -388,24 +395,25 @@ class Fiat extends utils.Adapter {
                 host: "channels.sdpr-01.fcagcv.com",
                 jar: this.cookieJar,
                 withCredentials: true,
-                url: "https://channels.sdpr-01.fcagcv.com/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status",
+                url: "https://channels.sdpr-01.fcagcv.com" + url,
                 headers: headers,
             }).then((response) => {
                 if (!response.data) {
-                    this.log.error("Get vehicles  statusfailed");
+                    this.log.error("Get vehicles failed: " + path);
                     reject();
                     return;
                 }
                 this.log.debug(JSON.stringify(response.data));
-                this.extractKeys(this, vin + ".status", response.data, "service");
+                this.extractKeys(this, vin + "." + path, response.data, "service");
             });
         }).catch((error) => {
             this.log.error(error);
-            this.log.error("GetVehicles failed");
+            this.log.error("GetVehicles status failed" + path);
             error.response && this.log.error(JSON.stringify(error.response.data));
             reject();
         });
     }
+
     randomString(length) {
         let result = "";
         const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
