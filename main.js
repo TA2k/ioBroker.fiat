@@ -59,9 +59,15 @@ class Fiat extends utils.Adapter {
                             });
                         });
                         this.appUpdateInterval = setInterval(() => {
-                            this.idArray.forEach((element) => {
-                                this.getVehicleStatus(element).catch(() => {
+                            this.idArray.forEach((vin) => {
+                                this.getVehicleStatus(vin, "/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status", "status").catch(() => {
                                     this.log.error("get vehicles status failed");
+                                });
+                                this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/location/lastknown", "location").catch(() => {
+                                    this.log.error("get vehicles location failed");
+                                });
+                                this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/vhr", "vhr").catch(() => {
+                                    this.log.error("get vehicles vhr failed");
                                 });
                             });
                         }, this.config.interval * 60 * 1000);
