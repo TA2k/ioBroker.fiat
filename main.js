@@ -214,8 +214,9 @@ class Fiat extends utils.Adapter {
                                                 return;
                                             }
                                             this.token = response.data.Token;
+                                            this.identityId = response.data.IdentityId;
                                             const data = JSON.stringify({
-                                                IdentityId: "eu-west-1:6f7882c6-4775-47b8-9eae-298ea0a088e6",
+                                                IdentityId: this.identityId,
                                                 Logins: {
                                                     "cognito-identity.amazonaws.com": this.token,
                                                 },
