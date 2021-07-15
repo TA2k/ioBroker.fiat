@@ -47,6 +47,12 @@ class Fiat extends utils.Adapter {
             .then(() => {
                 this.setState("info.connection", true, true);
                 this.log.info("Login successful");
+
+                this.refreshTokenInterval = setInterval(() => {
+                    this.login().catch((error) => {
+                        this.log.error("Refresh token failed");
+                    });
+                }, 0.9 * 60 * 60 * 1000);
                 this.getVehicles()
                     .then(() => {
                         this.idArray.forEach((vin) => {
@@ -259,12 +265,6 @@ class Fiat extends utils.Adapter {
                                                         reject();
                                                         return;
                                                     }
-
-                                                    this.refreshTokenInterval = setInterval(() => {
-                                                        this.login().catch((error) => {
-                                                            this.log.error("Refresh token failed");
-                                                        });
-                                                    }, 0.9 * 60 * 60 * 1000);
                                                     resolve();
                                                 })
                                                 .catch((error) => {
