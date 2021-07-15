@@ -432,7 +432,7 @@ class Fiat extends utils.Adapter {
                         this.log.info(path + " receive 403 error relogin in 30 seconds");
 
                         error.response && this.log.debug(JSON.stringify(error.response.data));
-                        this.clearTimeout(this.reLoginTimeout);
+                        this.reLoginTimeout && this.clearTimeout(this.reLoginTimeout);
                         this.reLoginTimeout = this.setTimeout(() => {
                             this.login().catch(() => {
                                 this.log.error("Relogin failed restart adapter");
