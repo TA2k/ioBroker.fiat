@@ -47,7 +47,6 @@ class Fiat extends utils.Adapter {
             .then(() => {
                 this.setState("info.connection", true, true);
                 this.log.info("Login successful");
-
                 this.refreshTokenInterval = setInterval(() => {
                     this.login().catch((error) => {
                         this.log.error("Refresh token failed");
@@ -430,7 +429,7 @@ class Fiat extends utils.Adapter {
                 })
                 .catch((error) => {
                     if (error.response && error.response.status === 403) {
-                        this.log.info("403 Error relogin in 30 seconds");
+                        this.log.info(path + " receive 403 error relogin in 30 seconds");
 
                         error.response && this.log.debug(JSON.stringify(error.response.data));
                         this.clearTimeout(this.reLoginTimeout);
