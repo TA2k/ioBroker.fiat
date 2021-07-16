@@ -429,7 +429,7 @@ class Fiat extends utils.Adapter {
                 })
                 .catch((error) => {
                     if (error.response && error.response.status === 403) {
-                        this.log.info(path + " receive 403 error relogin in 30 seconds");
+                        this.log.info(path + " receive 403 error. Relogin in 30 seconds");
 
                         error.response && this.log.debug(JSON.stringify(error.response.data));
                         this.reLoginTimeout && this.clearTimeout(this.reLoginTimeout);
@@ -471,9 +471,9 @@ class Fiat extends utils.Adapter {
     onUnload(callback) {
         try {
             callback();
-            this.clearInterval(this.refreshTokenInterval);
-            this.clearInterval(this.appUpdateInterval);
-            this.clearInterval(this.reLoginTimeout);
+            this.refreshTokenInterval && this.clearInterval(this.refreshTokenInterval);
+            this.appUpdateInterval && this.clearInterval(this.appUpdateInterval);
+            this.reLoginTimeout && this.clearInterval(this.reLoginTimeout);
         } catch (e) {
             callback();
         }
