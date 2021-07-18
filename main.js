@@ -26,7 +26,7 @@ class Fiat extends utils.Adapter {
             name: "fiat",
         });
         this.on("ready", this.onReady.bind(this));
-        // this.on("stateChange", this.onStateChange.bind(this));
+        this.on("stateChange", this.onStateChange.bind(this));
         this.on("unload", this.onUnload.bind(this));
     }
 
@@ -47,6 +47,7 @@ class Fiat extends utils.Adapter {
         this.reLoginTimeout = null;
         this.extractKeys = extractKeys;
         this.setState("info.connection", false, true);
+        this.subscribeStates("*");
         this.login()
             .then(() => {
                 this.setState("info.connection", true, true);
@@ -363,6 +364,41 @@ class Fiat extends utils.Adapter {
                             },
                             native: {},
                         });
+                        await this.setObjectNotExistsAsync(element.vin + ".remote", {
+                            type: "channel",
+                            common: {
+                                name: "Remote Controls",
+                                role: "indicator",
+                            },
+                            native: {},
+                        });
+                        const remoteArray = [
+                            { command: "VF", name: "Update Location" },
+                            { command: "RDU", name: "Unlock" },
+                            { command: "RDL", name: "Lock" },
+                            { command: "ROLIGHTS", name: "Lights" },
+                            { command: "ROHVACON", name: "AC On" },
+                            { command: "ROHVACOFF", name: "AC Off" },
+                            { command: "ROTRUNKLOCK", name: "Trunk Lock" },
+                            { command: "ROTRUNKUNLOCK", name: "Trunk Unlock" },
+                            { command: "REON", name: "Engine on" },
+                            { command: "REOFF", name: "Engine off" },
+                            { command: "HBLF", name: "HBLF Unkown" },
+                            { command: "TA", name: "TA Unkown" },
+                            // { command: "DEEPREFRESH", name: "Deep refresh" },
+                        ];
+                        remoteArray.forEach((remote) => {
+                            this.setObjectNotExists(element.vin + ".remote." + remote.command, {
+                                type: "state",
+                                common: {
+                                    name: remote.name,
+                                    type: "boolean",
+                                    role: "boolean",
+                                    write: true,
+                                },
+                                native: {},
+                            });
+                        });
 
                         this.extractKeys(this, element.vin + ".general", element, "service");
                         resolve();
@@ -428,14 +464,15 @@ class Fiat extends utils.Adapter {
                         return;
                     }
                     this.log.debug(JSON.stringify(response.data));
-                    this.extractKeys(this, vin + "." + path, response.data, "itemKey");
-                    resolve();
+                    if (path) {
+                        this.extractKeys(this, vin + "." + path, response.data, "itemKey");
+                    }
+                    resolve(response.data);
                 })
                 .catch((error) => {
                     if (error.response && error.response.status === 403) {
-                        this.log.info(path + " receive 403 error. Relogin in 30 seconds");
-
                         error.response && this.log.debug(JSON.stringify(error.response.data));
+                        this.log.info(path + " receive 403 error. Relogin in 30 seconds");
                         clearTimeout(this.reLoginTimeout);
                         this.reLoginTimeout = setTimeout(() => {
                             this.login().catch(() => {
@@ -445,10 +482,11 @@ class Fiat extends utils.Adapter {
                                 }, 1000 * 60 * 5);
                             });
                         }, 1000 * 30);
+                        reject();
                         return;
                     }
                     this.log.error(error);
-                    this.log.error("GetVehicles information failed: " + path);
+                    this.log.error("Request failed: " + path);
                     error.response && this.log.error(JSON.stringify(error.response.data));
                     reject(error);
                 });
@@ -469,6 +507,158 @@ class Fiat extends utils.Adapter {
         return new Date().toISOString().slice(0, 20).replace(/-/g, "").replace(/:/g, "").replace(/\./g, "") + "Z";
     }
     /**
+     * Is called if a subscribed state changes
+     * @param {string} id
+     * @param {ioBroker.State | null | undefined} state
+     */
+    async onStateChange(id, state) {
+        try {
+            if (state) {
+                if (!state.ack) {
+                    const vin = id.split(".")[2];
+                    const command = id.split(".")[4];
+                    let action = "remote";
+                    if (command === "VF") {
+                        action = "location";
+                    }
+
+                    if (id.indexOf(".remote.")) {
+                        this.receivePinAuth()
+                            .then(() => {
+                                this.getVehicleStatus(
+                                    vin,
+                                    "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/" + action,
+                                    null,
+                                    JSON.stringify({
+                                        command: command,
+                                        pinAuth: this.pinAuth,
+                                    })
+                                )
+                                    .then((data) => {
+                                        if (data.responseStatus !== "pending") {
+                                            this.log.warn(JSON.stringify(data));
+                                        }
+                                        this.updateTimeout = setTimeout(() => {
+                                            this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/location/lastknown", "location").catch(() => {
+                                                this.log.error("get vehicles location failed");
+                                            });
+                                            this.getVehicleStatus(vin, "/v2/accounts/" + this.UID + "/vehicles/" + vin + "/status", "status").catch(() => {
+                                                this.log.error("get vehicles status failed");
+                                            });
+                                        }, 10 * 1000);
+                                    })
+                                    .catch(() => {
+                                        this.log.error("Failed to set remote");
+                                    });
+                            })
+                            .catch(() => {
+                                this.log.error("Failed to authenticate pin");
+                            });
+                    }
+                }
+            }
+        } catch (err) {
+            this.log.error("Error in OnStateChange: " + err);
+        }
+    }
+    receivePinAuth() {
+        return new Promise((resolve, reject) => {
+            if (!this.config.pin) {
+                this.log.warn("No pin in instance settings");
+                reject();
+                return;
+            }
+
+            const data = JSON.stringify({ pin: btoa(this.config.pin) });
+            const url = "/v1/accounts/" + this.UID + "/ignite/pin/authenticate";
+            const method = "POST";
+            const headers = {
+                Host: "mfa.fcl-01.fcagcv.com",
+                "sec-ch-ua": '"Chromium";v="91", " Not A;Brand";v="99", "Google Chrome";v="91"',
+                clientrequestid: this.randomString(16),
+                "content-type": "application/json",
+                requestid: this.randomString(16),
+                accept: "application/json, text/plain, */*",
+                "x-amz-date": this.amzDate(),
+                "x-amz-security-token": this.amz.Credentials.SessionToken,
+                locale: "de_de",
+                "x-api-key": "JWRYW7IYhW9v0RqDghQSx4UcRYRILNmc8zAuh5ys",
+                "accept-language": "de-de",
+                origin: "https://myuconnect.fiat.com",
+                "sec-fetch-site": "cross-site",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-dest": "empty",
+                referer: "https://myuconnect.fiat.com/",
+                "accept-language": "de,en;q=0.9",
+                "x-originator-type": "web",
+                "sec-ch-ua-mobile": "?0",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
+            };
+            const signed = aws4.sign(
+                {
+                    host: "mfa.fcl-01.fcagcv.com",
+                    body: data,
+                    path: url,
+                    service: "execute-api",
+                    method: method,
+                    region: "eu-west-1",
+                    headers: headers,
+                },
+                { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
+            );
+            headers["Authorization"] = signed.headers["Authorization"];
+            axios({
+                method: method,
+                host: "mfa.fcl-01.fcagcv.com",
+                jar: this.cookieJar,
+                withCredentials: true,
+                url: "https://mfa.fcl-01.fcagcv.com" + url,
+                headers: headers,
+                data: data,
+            })
+                .then((response) => {
+                    if (!response.data) {
+                        this.log.error("Get pin failed: ");
+                        reject();
+                        return;
+                    }
+                    this.log.debug(JSON.stringify(response.data));
+
+                    this.pinAuth = response.data.token;
+
+                    resolve(response.data);
+                })
+                .catch((error) => {
+                    if (error.response && error.response.status === 403) {
+                        if (error.response && error.response.data && error.response.data.name === "INVALID_PIN") {
+                            this.log.error(JSON.stringify(error.response.data));
+                            reject();
+                            return;
+                        }
+
+                        error.response && this.log.debug(JSON.stringify(error.response.data));
+                        this.log.info(path + " receive 403 error. Relogin in 30 seconds");
+                        clearTimeout(this.reLoginTimeout);
+                        this.reLoginTimeout = setTimeout(() => {
+                            this.login().catch(() => {
+                                this.log.error("Relogin failed restart adapter");
+                                this.reLoginTimeout = setTimeout(() => {
+                                    this.restart();
+                                }, 1000 * 60 * 5);
+                            });
+                        }, 1000 * 30);
+                        reject();
+                        return;
+                    }
+                    this.log.error(error);
+                    this.log.error("get pin failed: " + path);
+                    error.response && this.log.error(JSON.stringify(error.response.data));
+                    reject(error);
+                });
+        });
+    }
+
+    /**
      * Is called when adapter shuts down - callback has to be called under any circumstances!
      * @param {() => void} callback
      */
@@ -480,21 +670,6 @@ class Fiat extends utils.Adapter {
             clearTimeout(this.reLoginTimeout);
         } catch (e) {
             callback();
-        }
-    }
-
-    /**
-     * Is called if a subscribed state changes
-     * @param {string} id
-     * @param {ioBroker.State | null | undefined} state
-     */
-    onStateChange(id, state) {
-        if (state) {
-            // The state was changed
-            this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-        } else {
-            // The state was deleted
-            this.log.info(`state ${id} deleted`);
         }
     }
 }
