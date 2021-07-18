@@ -37,6 +37,10 @@ class Fiat extends utils.Adapter {
         axiosCookieJarSupport(axios);
         this.cookieJar = new tough.CookieJar();
 
+        if (this.config.interval < 0.5) {
+            this.log.info("Set interval to minimum 0.5");
+            this.config.interval = 0.5;
+        }
         this.idArray = [];
         this.refreshTokenInterval = null;
         this.appUpdateInterval = null;
