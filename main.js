@@ -551,8 +551,9 @@ class Fiat extends utils.Adapter {
                                         this.log.error("Failed to set remote");
                                     });
                             })
-                            .catch(() => {
+                            .catch((error) => {
                                 this.log.error("Failed to authenticate pin");
+                                this.log.error(error);
                             });
                     }
                 }
@@ -561,6 +562,7 @@ class Fiat extends utils.Adapter {
             this.log.error("Error in OnStateChange: " + err);
         }
     }
+
     receivePinAuth() {
         return new Promise((resolve, reject) => {
             if (!this.config.pin) {
@@ -568,8 +570,8 @@ class Fiat extends utils.Adapter {
                 reject();
                 return;
             }
-            this.log.debug("Found Pin");
-            const data = JSON.stringify({ pin: btoa(this.config.pin) });
+
+            const data = JSON.stringify({ pin: Buffer.from(this.config.pin).toString("base64") });
             const url = "/v1/accounts/" + this.UID + "/ignite/pin/authenticate";
             const method = "POST";
             const headers = {
@@ -594,8 +596,6 @@ class Fiat extends utils.Adapter {
                 "sec-ch-ua-mobile": "?0",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
             };
-
-            this.log.debug("Create Header");
             const signed = aws4.sign(
                 {
                     host: "mfa.fcl-01.fcagcv.com",
@@ -609,8 +609,6 @@ class Fiat extends utils.Adapter {
                 { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
             );
             headers["Authorization"] = signed.headers["Authorization"];
-
-            this.log.debug("Signed Header");
             axios({
                 method: method,
                 host: "mfa.fcl-01.fcagcv.com",
