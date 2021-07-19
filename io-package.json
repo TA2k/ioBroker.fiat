@@ -69,15 +69,18 @@
         ]
     },
     "encryptedNative": [
-        "password"
+        "password",
+        "pin"
     ],
     "protectedNative": [
-        "password"
+        "password",
+        "pin"
     ],
     "native": {
         "user": "",
         "password": "",
-        "interval": 5
+        "interval": 5,
+        "pin": ""
     },
     "instanceObjects": [
         {
