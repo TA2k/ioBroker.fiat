@@ -568,7 +568,7 @@ class Fiat extends utils.Adapter {
                 reject();
                 return;
             }
-
+            this.log.debug("Found Pin");
             const data = JSON.stringify({ pin: btoa(this.config.pin) });
             const url = "/v1/accounts/" + this.UID + "/ignite/pin/authenticate";
             const method = "POST";
@@ -594,6 +594,8 @@ class Fiat extends utils.Adapter {
                 "sec-ch-ua-mobile": "?0",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
             };
+
+            this.log.debug("Create Header");
             const signed = aws4.sign(
                 {
                     host: "mfa.fcl-01.fcagcv.com",
@@ -607,6 +609,8 @@ class Fiat extends utils.Adapter {
                 { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
             );
             headers["Authorization"] = signed.headers["Authorization"];
+
+            this.log.debug("Signed Header");
             axios({
                 method: method,
                 host: "mfa.fcl-01.fcagcv.com",
@@ -651,7 +655,7 @@ class Fiat extends utils.Adapter {
                         return;
                     }
                     this.log.error(error);
-                    this.log.error("get pin failed: " + path);
+                    this.log.error("get pin failed");
                     error.response && this.log.error(JSON.stringify(error.response.data));
                     reject(error);
                 });
