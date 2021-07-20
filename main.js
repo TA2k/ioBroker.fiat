@@ -383,8 +383,9 @@ class Fiat extends utils.Adapter {
                             { command: "ROTRUNKUNLOCK", name: "Trunk Unlock" },
                             { command: "REON", name: "Engine on" },
                             { command: "REOFF", name: "Engine off" },
-                            { command: "HBLF", name: "HBLF Unkown" },
-                            { command: "TA", name: "TA Unkown" },
+                            { command: "HBLF", name: "Locate Horn Lights" },
+                            { command: "TA", name: "Theft Alarm Suppress" },
+                            { command: "CNOW", name: "Charge Now" },
                             // { command: "DEEPREFRESH", name: "Deep refresh" },
                         ];
                         remoteArray.forEach((remote) => {
