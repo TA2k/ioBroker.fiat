@@ -66,6 +66,11 @@
             {
                 "js-controller": ">=3.0.0"
             }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=4.0.9"
+            }
         ]
     },
     "encryptedNative": [
