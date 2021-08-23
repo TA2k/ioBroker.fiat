@@ -106,6 +106,7 @@ class Fiat extends utils.Adapter {
                 method: "get",
                 jar: this.cookieJar,
                 withCredentials: true,
+                ignoreCookieErrors: true,
                 url: "https://loginmyuconnect.fiat.com/accounts.webSdkBootstrap?apiKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fvehicle-services&sdk=js_latest&sdkBuild=12234&format=json",
                 headers: {
                     accept: "*/*",
@@ -294,14 +295,14 @@ class Fiat extends utils.Adapter {
                         })
                         .catch((error) => {
                             this.log.error(error);
-                            this.log.error("Login failed");
+                            this.log.error("Login failed #2");
                             error.response && this.log.error(JSON.stringify(error.response.data));
                             reject();
                         });
                 })
                 .catch((error) => {
                     this.log.error(error);
-                    this.log.error("Login failed");
+                    this.log.error("Login failed #1");
                     error.response && this.log.error(JSON.stringify(error.response.data));
                     reject();
                 });
