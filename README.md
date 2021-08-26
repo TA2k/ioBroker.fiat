@@ -17,6 +17,8 @@ fiat adapter
 
 ## Changelog
 
+### 0.0.2
+* (TA2k) Enable deep refresh to update charging state
 ### 0.0.1
 * (TA2k) initial release
 
