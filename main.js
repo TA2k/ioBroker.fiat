@@ -72,6 +72,10 @@ class Fiat extends utils.Adapter {
                             this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/svla/status", "svla").catch(() => {
                                 this.log.error("get vehicles svla failed");
                             });
+
+                            // this.getVehicleStatus(vin, "/v1/accounts/" + this.UID + "/vehicles/" + vin + "/phev/chargeschedule", "chargeschedule").catch(() => {
+                            //     this.log.error("get vehicles remote history failed");
+                            // });
                         });
                         this.appUpdateInterval = setInterval(() => {
                             this.idArray.forEach((vin) => {
@@ -387,7 +391,7 @@ class Fiat extends utils.Adapter {
                             { command: "HBLF", name: "Locate Horn Lights" },
                             { command: "TA", name: "Theft Alarm Suppress" },
                             { command: "CNOW", name: "Charge Now" },
-                            // { command: "DEEPREFRESH", name: "Deep refresh" },
+                            { command: "DEEPREFRESH", name: "Deep refresh charging state" },
                         ];
                         remoteArray.forEach((remote) => {
                             this.setObjectNotExists(element.vin + ".remote." + remote.command, {
@@ -522,6 +526,9 @@ class Fiat extends utils.Adapter {
                     let action = "remote";
                     if (command === "VF") {
                         action = "location";
+                    }
+                    if (command === "DEEPREFRESH") {
+                        action = "ev";
                     }
 
                     if (id.indexOf(".remote.")) {
