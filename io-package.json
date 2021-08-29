@@ -4,7 +4,7 @@
         "version": "0.0.3",
         "news": {
             "0.0.3": {
-                "en": "Enable precondition",
+                "en": "Added precondition",
                 "de": "Vorklimatisierung hinzugefügt"
             },
             "0.0.2": {
