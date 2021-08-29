@@ -392,6 +392,7 @@ class Fiat extends utils.Adapter {
                             { command: "TA", name: "Theft Alarm Suppress" },
                             { command: "CNOW", name: "Charge Now" },
                             { command: "DEEPREFRESH", name: "Deep refresh charging state" },
+                            { command: "ROPRECOND", name: "Precondition/Klima" },
                         ];
                         remoteArray.forEach((remote) => {
                             this.setObjectNotExists(element.vin + ".remote." + remote.command, {
