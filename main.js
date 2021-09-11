@@ -12,7 +12,7 @@ const axiosCookieJarSupport = require("axios-cookiejar-support").default;
 const tough = require("tough-cookie");
 const crypto = require("crypto");
 const aws4 = require("aws4");
-const { extractKeys } = require("./lib/extractKeys");
+const Json2iob = require("./lib/json2iob");
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
@@ -45,7 +45,7 @@ class Fiat extends utils.Adapter {
         this.refreshTokenInterval = null;
         this.appUpdateInterval = null;
         this.reLoginTimeout = null;
-        this.extractKeys = extractKeys;
+        this.json2iob = new Json2iob(this);
         this.setState("info.connection", false, true);
         this.subscribeStates("*");
         this.login()
@@ -174,7 +174,7 @@ class Fiat extends utils.Adapter {
                             }
                             this.loginToken = response.data.sessionInfo.login_token;
                             this.UID = response.data.userInfo.UID;
-                            this.extractKeys(this, "general", response.data);
+                            this.json2iob.parse("general", response.data);
                             axios({
                                 method: "get",
                                 jar: this.cookieJar,
@@ -407,7 +407,7 @@ class Fiat extends utils.Adapter {
                             });
                         });
 
-                        this.extractKeys(this, element.vin + ".general", element, "service");
+                        this.json2iob.parse(element.vin + ".general", element, { preferedArrayName: "service" });
                         resolve();
                     });
                 })
@@ -472,7 +472,7 @@ class Fiat extends utils.Adapter {
                     }
                     this.log.debug(JSON.stringify(response.data));
                     if (path) {
-                        this.extractKeys(this, vin + "." + path, response.data, "itemKey");
+                        this.json2iob.parse(vin + "." + path, response.data, { preferedArrayName: "itemKey" });
                     }
                     resolve(response.data);
                 })

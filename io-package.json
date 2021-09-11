@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "fiat",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "news": {
+            "0.0.4": {
+                "en": "Fix parsing bug",
+            },
             "0.0.3": {
                 "en": "Added precondition",
                 "de": "Vorklimatisierung hinzugefügt"
