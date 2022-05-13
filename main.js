@@ -28,6 +28,7 @@ class Fiat extends utils.Adapter {
         this.on("ready", this.onReady.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
         this.on("unload", this.onUnload.bind(this));
+        this.apiKey = "2wGyL6PHec9o1UeLPYpoYa1SkEWqeBur9bLsi24i";
     }
 
     /**
@@ -213,7 +214,7 @@ class Fiat extends utils.Adapter {
                                             clientrequestid: this.randomString(16),
                                             accept: "*/*",
                                             locale: "de_de",
-                                            "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
+                                            "x-api-key": this.apiKey,
                                             "accept-language": "de-de",
                                             origin: "https://myuconnect.fiat.com",
                                             "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
@@ -323,7 +324,7 @@ class Fiat extends utils.Adapter {
                 "x-amz-date": this.amzDate(),
                 "x-amz-security-token": this.amz.Credentials.SessionToken,
                 locale: "de_de",
-                "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
+                "x-api-key": this.apiKey,
                 "accept-language": "de-de",
                 "x-clientapp-name": "CWP",
                 origin: "https://myuconnect.fiat.com",
@@ -434,7 +435,7 @@ class Fiat extends utils.Adapter {
                 "x-amz-date": this.amzDate(),
                 "x-amz-security-token": this.amz.Credentials.SessionToken,
                 locale: "de_de",
-                "x-api-key": "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je",
+                "x-api-key": this.apiKey,
                 "accept-language": "de-de",
                 "x-clientapp-name": "CWP",
                 origin: "https://myuconnect.fiat.com",
@@ -530,6 +531,9 @@ class Fiat extends utils.Adapter {
                     }
                     if (command === "DEEPREFRESH") {
                         action = "ev";
+                    }
+                    if (command === "CNOW") {
+                        action = "ev/chargenow";
                     }
 
                     if (id.indexOf(".remote.")) {
