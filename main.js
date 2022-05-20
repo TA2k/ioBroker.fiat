@@ -29,6 +29,17 @@ class Fiat extends utils.Adapter {
         this.on("stateChange", this.onStateChange.bind(this));
         this.on("unload", this.onUnload.bind(this));
         this.apiKey = "2wGyL6PHec9o1UeLPYpoYa1SkEWqeBur9bLsi24i";
+        this.loginApiKey = "3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI";
+        this.myuUrl = "myuconnect.fiat.com";
+        this.loginUrl = "login" + this.myuUrl + "";
+        this.type = this.config.type || "fiat";
+
+        if (this.type === "jeep") {
+            this.apiKey = "qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je";
+            this.loginApiKey = "3_ZvJpoiZQ4jT5ACwouBG5D1seGEntHGhlL0JYlZNtj95yERzqpH4fFyIewVMmmK7j";
+            this.loginUrl = "login.jeep.com";
+            this.myuUrl = "myuconnect.jeep.com";
+        }
     }
 
     /**
@@ -112,13 +123,20 @@ class Fiat extends utils.Adapter {
                 jar: this.cookieJar,
                 withCredentials: true,
                 ignoreCookieErrors: true,
-                url: "https://loginmyuconnect.fiat.com/accounts.webSdkBootstrap?apiKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fvehicle-services&sdk=js_latest&sdkBuild=12234&format=json",
+                url:
+                    "https://" +
+                    this.loginUrl +
+                    "/accounts.webSdkBootstrap?apiKey=" +
+                    this.loginApiKey +
+                    "&pageURL=https%3A%2F%2F" +
+                    this.myuUrl +
+                    "%2Fde%2Fde%2Fvehicle-services&sdk=js_latest&sdkBuild=12234&format=json",
                 headers: {
                     accept: "*/*",
-                    origin: "https://myuconnect.fiat.com",
+                    origin: "https://" + this.myuUrl + "",
                     "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
                     "accept-language": "de-de",
-                    referer: "https://myuconnect.fiat.com/de/de/vehicle-services",
+                    referer: "https://" + this.myuUrl + "/de/de/vehicle-services",
                 },
             })
                 .then((response) => {
@@ -133,14 +151,14 @@ class Fiat extends utils.Adapter {
                         method: "post",
                         jar: this.cookieJar,
                         withCredentials: true,
-                        url: "https://loginmyuconnect.fiat.com/accounts.login",
+                        url: "https://" + this.loginUrl + "/accounts.login",
                         headers: {
                             accept: "*/*",
                             "content-type": "application/x-www-form-urlencoded",
-                            origin: "https://myuconnect.fiat.com",
+                            origin: "https://" + this.myuUrl + "",
                             "accept-language": "de-de",
                             "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                            referer: "https://myuconnect.fiat.com/de/de/login",
+                            referer: "https://" + this.myuUrl + "/de/de/login",
                         },
                         data: [
                             "loginID=" + this.config.user,
@@ -152,11 +170,11 @@ class Fiat extends utils.Adapter {
                             "loginMode=standard",
                             "lang=de0de",
                             'riskContext={"b0":52569,"b2":8,"b5":1}',
-                            "APIKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI",
+                            "APIKey=" + this.loginApiKey,
                             "source=showScreenSet",
                             "sdk=js_latest",
                             "authMode=cookie",
-                            "pageURL=https://myuconnect.fiat.com/de/de/login",
+                            "pageURL=https://" + this.myuUrl + "/de/de/login",
                             "sdkBuild=12234",
                             "format=json",
                         ].join("&"),
@@ -181,15 +199,21 @@ class Fiat extends utils.Adapter {
                                 jar: this.cookieJar,
                                 withCredentials: true,
                                 url:
-                                    "https://loginmyuconnect.fiat.com/accounts.getJWT?fields=profile.firstName%2Cprofile.lastName%2Cprofile.email%2Ccountry%2Clocale%2Cdata.disclaimerCodeGSDP%2Cdata.GSDPisVerified&APIKey=3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI&sdk=js_latest&login_token=" +
+                                    "https://" +
+                                    this.loginUrl +
+                                    "/accounts.getJWT?fields=profile.firstName%2Cprofile.lastName%2Cprofile.email%2Ccountry%2Clocale%2Cdata.disclaimerCodeGSDP%2Cdata.GSDPisVerified&APIKey=" +
+                                    this.loginApiKey +
+                                    "&sdk=js_latest&login_token=" +
                                     this.loginToken +
-                                    "&authMode=cookie&pageURL=https%3A%2F%2Fmyuconnect.fiat.com%2Fde%2Fde%2Fdashboard&sdkBuild=12234&format=json",
+                                    "&authMode=cookie&pageURL=https%3A%2F%2F" +
+                                    this.myuUrl +
+                                    "%2Fde%2Fde%2Fdashboard&sdkBuild=12234&format=json",
                                 headers: {
                                     accept: "*/*",
-                                    origin: "https://myuconnect.fiat.com",
+                                    origin: "https://" + this.myuUrl + "",
                                     "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
                                     "accept-language": "de-de",
-                                    referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                                    referer: "https://" + this.myuUrl + "/de/de/dashboard",
                                 },
                             })
                                 .then((response) => {
@@ -216,9 +240,9 @@ class Fiat extends utils.Adapter {
                                             locale: "de_de",
                                             "x-api-key": this.apiKey,
                                             "accept-language": "de-de",
-                                            origin: "https://myuconnect.fiat.com",
+                                            origin: "https://" + this.myuUrl + "",
                                             "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                                            referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                                            referer: "https://" + this.myuUrl + "/de/de/dashboard",
                                             "x-originator-type": "web",
                                         },
                                         data: JSON.stringify({
@@ -253,11 +277,11 @@ class Fiat extends utils.Adapter {
                                                     accept: "*/*",
                                                     "x-amz-user-agent": "aws-sdk-js/2.283.1 callback",
                                                     "accept-language": "de-de",
-                                                    origin: "https://myuconnect.fiat.com",
+                                                    origin: "https://" + this.myuUrl + "",
                                                     "x-amz-content-sha256": crypto.createHash("sha256").update(data).digest("hex"),
                                                     "user-agent":
                                                         "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                                                    referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                                                    referer: "https://" + this.myuUrl + "/de/de/dashboard",
                                                     "x-amz-target": "AWSCognitoIdentityService.GetCredentialsForIdentity",
                                                 },
                                                 data: data,
@@ -327,9 +351,9 @@ class Fiat extends utils.Adapter {
                 "x-api-key": this.apiKey,
                 "accept-language": "de-de",
                 "x-clientapp-name": "CWP",
-                origin: "https://myuconnect.fiat.com",
+                origin: "https://" + this.myuUrl + "",
                 "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                referer: "https://" + this.myuUrl + "/de/de/dashboard",
                 "x-originator-type": "web",
             };
             const signed = aws4.sign(
@@ -438,9 +462,9 @@ class Fiat extends utils.Adapter {
                 "x-api-key": this.apiKey,
                 "accept-language": "de-de",
                 "x-clientapp-name": "CWP",
-                origin: "https://myuconnect.fiat.com",
+                origin: "https://" + this.myuUrl + "",
                 "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
-                referer: "https://myuconnect.fiat.com/de/de/dashboard",
+                referer: "https://" + this.myuUrl + "/de/de/dashboard",
                 "x-originator-type": "web",
             };
             const signed = aws4.sign(
@@ -600,11 +624,11 @@ class Fiat extends utils.Adapter {
                 locale: "de_de",
                 "x-api-key": "JWRYW7IYhW9v0RqDghQSx4UcRYRILNmc8zAuh5ys",
                 "accept-language": "de-de",
-                origin: "https://myuconnect.fiat.com",
+                origin: "https://" + this.myuUrl + "",
                 "sec-fetch-site": "cross-site",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-dest": "empty",
-                referer: "https://myuconnect.fiat.com/",
+                referer: "https://" + this.myuUrl + "/",
                 "accept-language": "de,en;q=0.9",
                 "x-originator-type": "web",
                 "sec-ch-ua-mobile": "?0",

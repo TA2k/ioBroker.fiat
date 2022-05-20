@@ -96,7 +96,8 @@
         "user": "",
         "password": "",
         "interval": 5,
-        "pin": ""
+        "pin": "",
+        "type": "fiat"
     },
     "instanceObjects": [
         {
