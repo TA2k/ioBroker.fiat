@@ -28,6 +28,12 @@ class Fiat extends utils.Adapter {
         this.on("ready", this.onReady.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
         this.on("unload", this.onUnload.bind(this));
+    }
+
+    /**
+     * Is called when databases are connected and adapter received configuration.
+     */
+    async onReady() {
         this.apiKey = "2wGyL6PHec9o1UeLPYpoYa1SkEWqeBur9bLsi24i";
         this.loginApiKey = "3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI";
         this.myuUrl = "myuconnect.fiat.com";
@@ -40,12 +46,6 @@ class Fiat extends utils.Adapter {
             this.loginUrl = "login.jeep.com";
             this.myuUrl = "myuconnect.jeep.com";
         }
-    }
-
-    /**
-     * Is called when databases are connected and adapter received configuration.
-     */
-    async onReady() {
         axiosCookieJarSupport(axios);
         this.cookieJar = new tough.CookieJar();
 
