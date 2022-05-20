@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "fiat",
-        "version": "0.0.6",
+        "version": "0.0.7",
         "news": {
+            "0.0.7": {
+                "en": "Add Jeep Support"
+            },
             "0.0.6": {
                 "en": "Fix parsing bug"
             },
@@ -27,29 +30,29 @@
                 "zh-cn": "首次出版"
             }
         },
-        "title": "Fiat",
+        "title": "Fiat/Jeep",
         "titleLang": {
-            "en": "Fiat",
-            "de": "Fiat",
-            "ru": "Fiat",
-            "pt": "Fiat",
-            "nl": "Fiat",
-            "fr": "Décret",
-            "it": "Fiat",
-            "es": "Fíat",
-            "pl": "Placet",
-            "zh-cn": "菲亚特"
+            "en": "Fiat/Jeep",
+            "de": "Fiat/Jeep",
+            "ru": "Fiat/Jeep",
+            "pt": "Fiat/Jeep",
+            "nl": "Fiat/Jeep",
+            "fr": "Fiat/Jeep",
+            "it": "Fiat/Jeep",
+            "es": "Fiat/Jeep",
+            "pl": "Fiat/Jeep",
+            "zh-cn": "Fiat/Jeep"
         },
         "desc": {
-            "en": "fiat adapter",
-            "de": "Fiat-Adapter",
-            "ru": "фиат адаптер",
-            "pt": "adaptador fiat",
-            "nl": "fiat-adapter",
-            "fr": "adaptateur fiat",
-            "it": "adattatore fiat",
-            "es": "adaptador de fiat",
-            "pl": "adapter fiat",
+            "en": "Fiat/Jeep adapter",
+            "de": "Fiat/Jeep-Adapter",
+            "ru": "Fiat/Jeep адаптер",
+            "pt": "adaptador Fiat/Jeep",
+            "nl": "Fiat/Jeep-adapter",
+            "fr": "adaptateur Fiat/Jeep",
+            "it": "adattatore Fiat/Jeep",
+            "es": "adaptador de Fiat/Jeep",
+            "pl": "adapter Fiat/Jeep",
             "zh-cn": "法定适配器"
         },
         "authors": [
@@ -57,7 +60,8 @@
         ],
         "keywords": [
             "fiat",
-            "500e"
+            "500e",
+            "jeep"
         ],
         "license": "MIT",
         "platform": "Javascript/Node.js",
