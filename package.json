@@ -1,6 +1,6 @@
 {
   "name": "iobroker.fiat",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "fiat/jeep adapter",
   "author": {
     "name": "TA2k",
