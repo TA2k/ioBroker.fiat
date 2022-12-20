@@ -1,129 +1,120 @@
 {
-    "common": {
-        "name": "fiat",
-        "version": "0.0.7",
-        "news": {
-            "0.0.7": {
-                "en": "Add Jeep Support"
-            },
-            "0.0.6": {
-                "en": "Fix parsing bug"
-            },
-            "0.0.3": {
-                "en": "Added precondition",
-                "de": "Vorklimatisierung hinzugefügt"
-            },
-            "0.0.2": {
-                "en": "Enable deep refresh to update charging state",
-                "de": "Deep Refresh hinzugefügt um den Ladezustand zu aktualisieren"
-            },
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "zh-cn": "首次出版"
-            }
-        },
-        "title": "Fiat/Jeep",
-        "titleLang": {
-            "en": "Fiat/Jeep",
-            "de": "Fiat/Jeep",
-            "ru": "Fiat/Jeep",
-            "pt": "Fiat/Jeep",
-            "nl": "Fiat/Jeep",
-            "fr": "Fiat/Jeep",
-            "it": "Fiat/Jeep",
-            "es": "Fiat/Jeep",
-            "pl": "Fiat/Jeep",
-            "zh-cn": "Fiat/Jeep"
-        },
-        "desc": {
-            "en": "Fiat/Jeep adapter",
-            "de": "Fiat/Jeep-Adapter",
-            "ru": "Fiat/Jeep адаптер",
-            "pt": "adaptador Fiat/Jeep",
-            "nl": "Fiat/Jeep-adapter",
-            "fr": "adaptateur Fiat/Jeep",
-            "it": "adattatore Fiat/Jeep",
-            "es": "adaptador de Fiat/Jeep",
-            "pl": "adapter Fiat/Jeep",
-            "zh-cn": "法定适配器"
-        },
-        "authors": [
-            "TA2k <tombox2020@gmail.com>"
-        ],
-        "keywords": [
-            "fiat",
-            "500e",
-            "jeep"
-        ],
-        "license": "MIT",
-        "platform": "Javascript/Node.js",
-        "main": "main.js",
-        "icon": "fiat.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.fiat/master/admin/fiat.png",
-        "readme": "https://github.com/TA2k/ioBroker.fiat/blob/master/README.md",
-        "loglevel": "info",
-        "mode": "daemon",
-        "type": "vehicle",
-        "compact": true,
-        "connectionType": "cloud",
-        "dataSource": "poll",
-        "materialize": true,
-        "dependencies": [
-            {
-                "js-controller": ">=3.0.0"
-            }
-        ],
-        "globalDependencies": [
-            {
-                "admin": ">=4.0.9"
-            }
-        ]
+  "common": {
+    "name": "fiat",
+    "version": "0.0.8",
+    "news": {
+      "0.0.8": {
+        "en": "Update installation dependency"
+      },
+      "0.0.7": {
+        "en": "Add Jeep Support"
+      },
+      "0.0.6": {
+        "en": "Fix parsing bug"
+      },
+      "0.0.3": {
+        "en": "Added precondition",
+        "de": "Vorklimatisierung hinzugefügt"
+      },
+      "0.0.2": {
+        "en": "Enable deep refresh to update charging state",
+        "de": "Deep Refresh hinzugefügt um den Ladezustand zu aktualisieren"
+      },
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "zh-cn": "首次出版"
+      }
     },
-    "encryptedNative": [
-        "password",
-        "pin"
-    ],
-    "protectedNative": [
-        "password",
-        "pin"
-    ],
-    "native": {
-        "user": "",
-        "password": "",
-        "interval": 5,
-        "pin": "",
-        "type": "fiat"
+    "title": "Fiat/Jeep",
+    "titleLang": {
+      "en": "Fiat/Jeep",
+      "de": "Fiat/Jeep",
+      "ru": "Fiat/Jeep",
+      "pt": "Fiat/Jeep",
+      "nl": "Fiat/Jeep",
+      "fr": "Fiat/Jeep",
+      "it": "Fiat/Jeep",
+      "es": "Fiat/Jeep",
+      "pl": "Fiat/Jeep",
+      "zh-cn": "Fiat/Jeep"
     },
-    "instanceObjects": [
-        {
-            "_id": "info",
-            "type": "channel",
-            "common": {
-                "name": "Information"
-            },
-            "native": {}
-        },
-        {
-            "_id": "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "Device or service connected",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
-            },
-            "native": {}
-        }
+    "desc": {
+      "en": "Fiat/Jeep adapter",
+      "de": "Fiat/Jeep-Adapter",
+      "ru": "Fiat/Jeep адаптер",
+      "pt": "adaptador Fiat/Jeep",
+      "nl": "Fiat/Jeep-adapter",
+      "fr": "adaptateur Fiat/Jeep",
+      "it": "adattatore Fiat/Jeep",
+      "es": "adaptador de Fiat/Jeep",
+      "pl": "adapter Fiat/Jeep",
+      "zh-cn": "法定适配器"
+    },
+    "authors": ["TA2k <tombox2020@gmail.com>"],
+    "keywords": ["fiat", "500e", "jeep"],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "main": "main.js",
+    "icon": "fiat.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.fiat/master/admin/fiat.png",
+    "readme": "https://github.com/TA2k/ioBroker.fiat/blob/master/README.md",
+    "loglevel": "info",
+    "mode": "daemon",
+    "type": "vehicle",
+    "compact": true,
+    "connectionType": "cloud",
+    "dataSource": "poll",
+    "materialize": true,
+    "dependencies": [
+      {
+        "js-controller": ">=3.0.0"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=4.0.9"
+      }
     ]
+  },
+  "encryptedNative": ["password", "pin"],
+  "protectedNative": ["password", "pin"],
+  "native": {
+    "user": "",
+    "password": "",
+    "interval": 5,
+    "pin": "",
+    "type": "fiat"
+  },
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device or service connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }
