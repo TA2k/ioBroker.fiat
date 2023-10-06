@@ -504,6 +504,8 @@ class Fiat extends utils.Adapter {
         })
         .catch((error) => {
           if (error.response && error.response.status === 404) {
+            this.log.debug('Get vehicles failed: ' + path);
+            this.log.debug(JSON.stringify(error.response.data));
             resolve({});
             return;
           }
