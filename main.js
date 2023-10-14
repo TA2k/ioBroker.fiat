@@ -12,7 +12,7 @@ const { HttpsCookieAgent } = require('http-cookie-agent/http');
 const tough = require('tough-cookie');
 const crypto = require('crypto');
 const aws4 = require('aws4');
-const Json2iob = require('./lib/json2iob');
+const Json2iob = require('json2iob');
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
