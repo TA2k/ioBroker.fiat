@@ -167,7 +167,7 @@ class Fiat extends utils.Adapter {
             },
             data: [
               'loginID=' + this.config.user,
-              'password=' + this.config.password,
+              'password=' + encodeURIComponent(this.config.password),
               'sessionExpiration=7776000',
               'targetEnv=jssdk',
               'include=profile,data,emails,subscriptions,preferences,',
