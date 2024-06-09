@@ -35,6 +35,7 @@ class Fiat extends utils.Adapter {
       }),
     });
 
+    this.json2iob = new Json2iob(this);
     this.idArray = [];
     this.on('ready', this.onReady.bind(this));
     this.on('stateChange', this.onStateChange.bind(this));
@@ -65,7 +66,6 @@ class Fiat extends utils.Adapter {
     this.refreshTokenInterval = null;
     this.appUpdateInterval = null;
     this.reLoginTimeout = null;
-    this.json2iob = new Json2iob(this);
     this.setState('info.connection', false, true);
     this.subscribeStates('*');
     this.login()
@@ -75,21 +75,32 @@ class Fiat extends utils.Adapter {
         this.refreshTokenInterval = setInterval(() => {
           this.login().catch((error) => {
             this.log.error('Refresh token failed');
+            this.log.error(error);
           });
         }, 0.9 * 60 * 60 * 1000);
         this.getVehicles()
           .then(() => {
             this.idArray.forEach((vin) => {
-              this.getVehicleStatus(vin, '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status', 'status').catch(() => {
-                this.log.error('get vehicles status failed');
-              });
-              this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown', 'location').catch(() => {
+              this.getVehicleStatus(vin, '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status', 'status').catch(
+                () => {
+                  this.log.error('get vehicles status failed');
+                },
+              );
+              this.getVehicleStatus(
+                vin,
+                '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown',
+                'location',
+              ).catch(() => {
                 this.log.error('get vehicles location failed');
               });
               this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/vhr', 'vhr').catch(() => {
                 this.log.error('get vehicles vhr failed');
               });
-              this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status', 'svla').catch(() => {
+              this.getVehicleStatus(
+                vin,
+                '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status',
+                'svla',
+              ).catch(() => {
                 this.log.error('get vehicles svla failed');
               });
 
@@ -99,16 +110,28 @@ class Fiat extends utils.Adapter {
             });
             this.appUpdateInterval = setInterval(() => {
               this.idArray.forEach((vin) => {
-                this.getVehicleStatus(vin, '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status', 'status').catch(() => {
-                  this.log.error('get vehicles status failed');
-                });
-                this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown', 'location').catch(() => {
+                this.getVehicleStatus(vin, '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status', 'status').catch(
+                  () => {
+                    this.log.error('get vehicles status failed');
+                  },
+                );
+                this.getVehicleStatus(
+                  vin,
+                  '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown',
+                  'location',
+                ).catch(() => {
                   this.log.error('get vehicles location failed');
                 });
-                this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/vhr', 'vhr').catch(() => {
-                  this.log.error('get vehicles vhr failed');
-                });
-                this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status', 'svla').catch(() => {
+                this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/vhr', 'vhr').catch(
+                  () => {
+                    this.log.error('get vehicles vhr failed');
+                  },
+                );
+                this.getVehicleStatus(
+                  vin,
+                  '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status',
+                  'svla',
+                ).catch(() => {
                   this.log.error('get vehicles svla failed');
                 });
               });
@@ -371,7 +394,7 @@ class Fiat extends utils.Adapter {
           region: 'eu-west-1',
           headers: headers,
         },
-        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
+        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey },
       );
       this.log.debug(signed);
       headers['Authorization'] = signed.headers['Authorization'];
@@ -421,19 +444,83 @@ class Fiat extends utils.Adapter {
               { command: 'CNOW', name: 'Charge Now' },
               { command: 'DEEPREFRESH', name: 'Deep refresh charging state' },
               { command: 'ROPRECOND', name: 'Precondition/Klima' },
+              {
+                command: 'CPPLUS',
+                name: 'Change Schedule',
+                role: 'json',
+                type: 'string',
+                def: `[
+        {
+            "cabinPriority": false,
+            "chargeToFull": false,
+            "enableScheduleType": true,
+            "endTime": "13:05",
+            "repeatSchedule": true,
+            "scheduleType": "CHARGE",
+            "scheduledDays": {
+                "friday": true,
+                "monday": true,
+                "saturday": true,
+                "sunday": true,
+                "thursday": true,
+                "tuesday": true,
+                "wednesday": true
+            },
+            "startTime": "13:00"
+        },
+        {
+            "cabinPriority": true,
+            "chargeToFull": false,
+            "enableScheduleType": false,
+            "endTime": "11:45",
+            "repeatSchedule": false,
+            "scheduleType": "CLIMATE",
+            "scheduledDays": {
+                "friday": false,
+                "monday": false,
+                "saturday": false,
+                "sunday": false,
+                "thursday": false,
+                "tuesday": false,
+                "wednesday": false
+            },
+            "startTime": "11:45"
+        },
+        {
+            "cabinPriority": false,
+            "chargeToFull": false,
+            "enableScheduleType": false,
+            "endTime": "00:00",
+            "repeatSchedule": true,
+            "scheduleType": "CHARGE",
+            "scheduledDays": {
+                "friday": false,
+                "monday": false,
+                "saturday": false,
+                "sunday": false,
+                "thursday": false,
+                "tuesday": false,
+                "wednesday": false
+            },
+            "startTime": "00:00"
+        }
+    ]`,
+              },
             ];
-            remoteArray.forEach((remote) => {
+            for (const remote of remoteArray) {
               this.setObjectNotExists(element.vin + '.remote.' + remote.command, {
                 type: 'state',
                 common: {
                   name: remote.name,
-                  type: 'boolean',
-                  role: 'boolean',
+                  type: remote.type || 'boolean',
+                  role: remote.role || 'button',
+                  def: remote.def != null ? remote.def : false,
                   write: true,
+                  read: true,
                 },
                 native: {},
               });
-            });
+            }
 
             this.json2iob.parse(element.vin + '.general', element, { preferedArrayName: 'service' });
             resolve();
@@ -481,7 +568,7 @@ class Fiat extends utils.Adapter {
           region: 'eu-west-1',
           headers: headers,
         },
-        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
+        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey },
       );
       headers['Authorization'] = signed.headers['Authorization'];
       this.requestClient({
@@ -566,28 +653,47 @@ class Fiat extends utils.Adapter {
           if (command === 'CNOW') {
             action = 'ev/chargenow';
           }
-
+          if (command === 'CPPLUS') {
+            action = 'schedule';
+          }
           if (id.indexOf('.remote.')) {
             this.receivePinAuth()
               .then(() => {
+                const data = {
+                  command: command,
+                  pinAuth: this.pinAuth,
+                };
+                if (command === 'CPPLUS') {
+                  try {
+                    data.schedule = JSON.parse(state.val);
+                  } catch (error) {
+                    this.log.error('Failed to parse schedule');
+                    this.log.error(error);
+                  }
+                }
                 this.getVehicleStatus(
                   vin,
                   '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/' + action,
                   null,
-                  JSON.stringify({
-                    command: command,
-                    pinAuth: this.pinAuth,
-                  })
+                  JSON.stringify(data),
                 )
                   .then((data) => {
                     if (data.responseStatus !== 'pending') {
                       this.log.warn(JSON.stringify(data));
                     }
                     this.updateTimeout = setTimeout(() => {
-                      this.getVehicleStatus(vin, '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown', 'location').catch(() => {
+                      this.getVehicleStatus(
+                        vin,
+                        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown',
+                        'location',
+                      ).catch(() => {
                         this.log.error('get vehicles location failed');
                       });
-                      this.getVehicleStatus(vin, '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status', 'status').catch(() => {
+                      this.getVehicleStatus(
+                        vin,
+                        '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status',
+                        'status',
+                      ).catch(() => {
                         this.log.error('get vehicles status failed');
                       });
                     }, 10 * 1000);
@@ -636,10 +742,10 @@ class Fiat extends utils.Adapter {
         'sec-fetch-mode': 'cors',
         'sec-fetch-dest': 'empty',
         referer: 'https://' + this.myuUrl + '/',
-        'accept-language': 'de,en;q=0.9',
         'x-originator-type': 'web',
         'sec-ch-ua-mobile': '?0',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36',
+        'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36',
       };
       const signed = aws4.sign(
         {
@@ -651,14 +757,11 @@ class Fiat extends utils.Adapter {
           region: 'eu-west-1',
           headers: headers,
         },
-        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey }
+        { accessKeyId: this.amz.Credentials.AccessKeyId, secretAccessKey: this.amz.Credentials.SecretKey },
       );
       headers['Authorization'] = signed.headers['Authorization'];
       this.requestClient({
         method: method,
-        host: 'mfa.fcl-01.fcagcv.com',
-        jar: this.cookieJar,
-        withCredentials: true,
         url: 'https://mfa.fcl-01.fcagcv.com' + url,
         headers: headers,
         data: data,
@@ -684,7 +787,7 @@ class Fiat extends utils.Adapter {
             }
 
             error.response && this.log.debug(JSON.stringify(error.response.data));
-            this.log.info(path + ' receive 403 error. Relogin in 30 seconds');
+            this.log.info('pin auth receive 403 error. Relogin in 30 seconds');
             clearTimeout(this.reLoginTimeout);
             this.reLoginTimeout = setTimeout(() => {
               this.login().catch(() => {
@@ -712,8 +815,8 @@ class Fiat extends utils.Adapter {
   onUnload(callback) {
     try {
       callback();
-      clearInterval(this.refreshTokenInterval);
-      clearInterval(this.appUpdateInterval);
+      this.refreshTokenInterval && clearInterval(this.refreshTokenInterval);
+      this.appUpdateInterval && clearInterval(this.appUpdateInterval);
       clearTimeout(this.reLoginTimeout);
     } catch (e) {
       callback();
