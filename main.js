@@ -663,20 +663,18 @@ class Fiat extends utils.Adapter {
                   command: command,
                   pinAuth: this.pinAuth,
                 };
+                let url = '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/' + action;
                 if (command === 'CPPLUS') {
                   try {
                     data.schedule = JSON.parse(state.val);
+
+                    url = '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/ev/' + action;
                   } catch (error) {
                     this.log.error('Failed to parse schedule');
                     this.log.error(error);
                   }
                 }
-                this.getVehicleStatus(
-                  vin,
-                  '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/' + action,
-                  null,
-                  JSON.stringify(data),
-                )
+                this.getVehicleStatus(vin, url, null, JSON.stringify(data))
                   .then((data) => {
                     if (data.responseStatus !== 'pending') {
                       this.log.warn(JSON.stringify(data));
