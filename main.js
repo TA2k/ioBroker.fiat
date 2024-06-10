@@ -666,7 +666,7 @@ class Fiat extends utils.Adapter {
                 let url = '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/' + action;
                 if (command === 'CPPLUS') {
                   try {
-                    data.schedule = JSON.parse(state.val);
+                    data.schedules = JSON.parse(state.val);
 
                     url = '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/ev/' + action;
                   } catch (error) {
