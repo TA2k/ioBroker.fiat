@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "fiat",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "news": {
+      "0.0.10": {
+        "en": "added schedule edit via remote.CPPLUS",
+        "de": "hinzugefügt Schedule bearbeiten über remote.CPPLUS",
+        "ru": "добавленный график редактирования через удаленный. CPPLUS",
+        "pt": "adicionado cronograma editar via remoto. CPPLUS",
+        "nl": "toegevoegd schema bewerken via remote. CPPLUS",
+        "fr": "ajout d'une édition de l'horaire via distante. PPCLUS",
+        "it": "modifica della pianificazione tramite telecomando. CPPLUS",
+        "es": "añadido edición de horario a través de control remoto. CPPLUS",
+        "pl": "dodano edycję harmonogramu za pomocą pilota. CPPLUS",
+        "uk": "додано редагування графіка через дистанційне керування. CPPLUS",
+        "zh-cn": "通过远程添加调度编辑 。 CPPLUS 语句"
+      },
       "0.0.9": {
         "en": "Add catch for disabled location"
       },
@@ -22,18 +35,6 @@
       "0.0.2": {
         "en": "Enable deep refresh to update charging state",
         "de": "Deep Refresh hinzugefügt um den Ladezustand zu aktualisieren"
-      },
-      "0.0.1": {
-        "en": "initial release",
-        "de": "Erstveröffentlichung",
-        "ru": "Начальная версия",
-        "pt": "lançamento inicial",
-        "nl": "Eerste uitgave",
-        "fr": "Première version",
-        "it": "Versione iniziale",
-        "es": "Versión inicial",
-        "pl": "Pierwsze wydanie",
-        "zh-cn": "首次出版"
       }
     },
     "title": "Fiat/Jeep",
