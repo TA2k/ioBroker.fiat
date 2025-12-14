@@ -66,7 +66,6 @@
     "keywords": ["fiat", "500e", "jeep"],
     "license": "MIT",
     "platform": "Javascript/Node.js",
-    "main": "main.js",
     "icon": "fiat.png",
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.fiat/master/admin/fiat.png",
