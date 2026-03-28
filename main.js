@@ -10,11 +10,11 @@ const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
 const { HttpsCookieAgent } = require('http-cookie-agent/http');
 const tough = require('tough-cookie');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const aws4 = require('aws4');
 const Json2iob = require('json2iob');
 // Load your modules here, e.g.:
-// const fs = require("fs");
+// const fs = require("node:fs");
 
 class Fiat extends utils.Adapter {
   /**
