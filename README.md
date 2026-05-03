@@ -49,6 +49,8 @@ https://forum.iobroker.net/topic/46378/test-adapter-fiat-v0-0-x
 
 - (TA2k) initial release
 
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## License
 
 MIT License
