@@ -29,6 +29,10 @@ fiat.0.id.remote auf true setzen steuert den jeweiligen Befehl
 https://forum.iobroker.net/topic/46378/test-adapter-fiat-v0-0-x
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+- (ioBroker-Bot) Adapter requires js-controller >= 6.0.11 now.
+
 ### 0.0.10 (2024-06-10)
 
 - added schedule edit via remote.CPPLUS
