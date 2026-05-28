@@ -62,8 +62,14 @@
       "pl": "adapter Fiat/Jeep",
       "zh-cn": "法定适配器"
     },
-    "authors": ["TA2k <tombox2020@gmail.com>"],
-    "keywords": ["fiat", "500e", "jeep"],
+    "authors": [
+      "TA2k <tombox2020@gmail.com>"
+    ],
+    "keywords": [
+      "fiat",
+      "500e",
+      "jeep"
+    ],
     "license": "MIT",
     "platform": "Javascript/Node.js",
     "main": "main.js",
@@ -77,20 +83,28 @@
     "compact": true,
     "connectionType": "cloud",
     "dataSource": "poll",
-    "materialize": true,
     "dependencies": [
       {
-        "js-controller": ">=3.0.0"
+        "js-controller": ">=6.0.11"
       }
     ],
     "globalDependencies": [
       {
         "admin": ">=4.0.9"
       }
-    ]
+    ],
+    "adminUI": {
+      "config": "materialize"
+    }
   },
-  "encryptedNative": ["password", "pin"],
-  "protectedNative": ["password", "pin"],
+  "encryptedNative": [
+    "password",
+    "pin"
+  ],
+  "protectedNative": [
+    "password",
+    "pin"
+  ],
   "native": {
     "user": "",
     "password": "",
