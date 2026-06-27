@@ -44,17 +44,21 @@ class Fiat extends utils.Adapter {
    * Is called when databases are connected and adapter received configuration.
    */
   async onReady() {
+    // Brand configuration aligned with py-uconnect / hass-uconnect and confirmed
+    // against the official My Uconnect APK v1.99.701 (smali_classes4/.../MyUrlFactory.smali).
+    // Single FIAT x-api-key works for both FIAT and Jeep on the EU stack.
     this.apiKey = '2wGyL6PHec9o1UeLPYpoYa1SkEWqeBur9bLsi24i';
     this.loginApiKey = '3_mOx_J2dRgjXYCdyhchv3b5lhi54eBcdCTX4BI8MORqmZCoQWhA0mV2PTlptLGUQI';
     this.myuUrl = 'myuconnect.fiat.com';
-    this.loginUrl = 'login' + this.myuUrl + '';
+    this.loginUrl = 'loginmyuconnect.fiat.com';
+    this.brandCode = 'FIAT';
     this.type = this.config.type || 'fiat';
 
     if (this.type === 'jeep') {
-      this.apiKey = 'qLYupk65UU1tw2Ih1cJhs4izijgRDbir2UFHA3Je';
       this.loginApiKey = '3_ZvJpoiZQ4jT5ACwouBG5D1seGEntHGhlL0JYlZNtj95yERzqpH4fFyIewVMmmK7j';
       this.loginUrl = 'login.jeep.com';
       this.myuUrl = 'myuconnect.jeep.com';
+      this.brandCode = 'REST';
     }
 
     if (this.config.interval < 0.5) {
@@ -99,33 +103,106 @@ class Fiat extends utils.Adapter {
     }, this.config.interval * 60 * 1000);
   }
 
+  /**
+   * Per-command metadata for the FCA remote endpoints. Pulled from the official
+   * My Uconnect APK 1.99.701 (smali_classes4/.../MyUrlFactory.smali) and
+   * cross-checked against py-uconnect/py_uconnect/command.py:
+   *
+   *   /v1/.../remote/   – classic remote commands (lock, unlock, lights, ...)
+   *   /v2/.../remote/   – HVAC, trunk, liftgate, cabin vent, target temperature
+   *   /v1/.../location/ – location refresh (VF)
+   *   /v1/.../ev/       – DEEPREFRESH (with v2 DEEPREFRESH2 fallback)
+   *   /v1/.../ev/chargenow/ – CNOW (with v4 START_CHARGE fallback)
+   *   /v4/.../ev/schedule/  – CPPLUS (was /v2/.../ev/schedule)
+   *
+   * @param {string} command
+   */
+  remoteCommand(command) {
+    /** @type {Record<string, {apiVersion: string, segment: string, fallback?: {apiVersion: string, segment: string, command: string}}>} */
+    const map = {
+      VF: { apiVersion: 'v1', segment: 'location' },
+      RDU: { apiVersion: 'v1', segment: 'remote' },
+      RDL: { apiVersion: 'v1', segment: 'remote' },
+      ROLIGHTS: { apiVersion: 'v1', segment: 'remote' },
+      HBLF: { apiVersion: 'v1', segment: 'remote' },
+      REON: { apiVersion: 'v1', segment: 'remote' },
+      REOFF: { apiVersion: 'v1', segment: 'remote' },
+      TA: { apiVersion: 'v1', segment: 'remote' },
+      ROPRECOND: { apiVersion: 'v1', segment: 'remote' },
+      ROPRECOND_OFF: { apiVersion: 'v1', segment: 'remote' },
+      // promoted from v1 to v2 in the APK
+      ROHVACON: { apiVersion: 'v2', segment: 'remote' },
+      ROHVACOFF: { apiVersion: 'v2', segment: 'remote' },
+      ROTRUNKLOCK: { apiVersion: 'v2', segment: 'remote' },
+      ROTRUNKUNLOCK: { apiVersion: 'v2', segment: 'remote' },
+      ROLIFTGATELOCK: { apiVersion: 'v2', segment: 'remote' },
+      ROLIFTGATEUNLOCK: { apiVersion: 'v2', segment: 'remote' },
+      ACV: { apiVersion: 'v2', segment: 'remote' },
+      ROHVACTMP: { apiVersion: 'v2', segment: 'remote' },
+      // EV commands keep v1 path but py-uconnect documents v2/v4 fallbacks
+      DEEPREFRESH: {
+        apiVersion: 'v1',
+        segment: 'ev',
+        fallback: { apiVersion: 'v2', segment: 'ev', command: 'DEEPREFRESH2' },
+      },
+      CNOW: {
+        apiVersion: 'v1',
+        segment: 'ev/chargenow',
+        fallback: { apiVersion: 'v4', segment: 'ev/chargenow', command: 'START_CHARGE' },
+      },
+      CPPLUS: { apiVersion: 'v4', segment: 'ev/schedule' },
+    };
+    return map[command];
+  }
+
   async updateAllVehicles() {
     for (const vin of this.idArray) {
+      await this.fetchVehicleStatus(vin);
       await this.fetchVehicle(
         vin,
-        '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status',
-        'status',
-        'get vehicles status failed',
-      );
-      await this.fetchVehicle(
-        vin,
-        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown',
+        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown/',
         'location',
         'get vehicles location failed',
       );
       await this.fetchVehicle(
         vin,
-        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/vhr',
+        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/vhr/',
         'vhr',
         'get vehicles vhr failed',
       );
       await this.fetchVehicle(
         vin,
-        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status',
+        '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/svla/status/',
         'svla',
         'get vehicles svla failed',
       );
     }
+  }
+
+  /**
+   * Vehicle status moved from /v2/.../status (old adapter path) to /v3 and /v4
+   * in newer FCA backends — APK MyUrlFactory exposes both `URL_INFO` (v3) and
+   * `URL_INFO_v4`. Try v3 first, fall back to v4 on 4xx (py-uconnect behaviour).
+   *
+   * @param {string} vin
+   */
+  async fetchVehicleStatus(vin) {
+    for (const apiVersion of ['v3', 'v4']) {
+      const url = '/' + apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/status/';
+      try {
+        return await this.getVehicleStatus(vin, url, 'status', undefined, { swallow404: false });
+      } catch (error) {
+        const err = /** @type {any} */ (error);
+        const status = err && err.response && err.response.status;
+        if (status === 400 || status === 404 || status === 502) {
+          this.log.debug('status ' + apiVersion + ' returned ' + status + ', trying next');
+          continue;
+        }
+        this.log.error('get vehicles status failed');
+        return;
+      }
+    }
+    this.log.warn('Vehicle ' + vin + ' has no working /v3 or /v4 status endpoint');
   }
 
   /**
@@ -346,10 +423,17 @@ class Fiat extends utils.Adapter {
       referer: 'https://' + this.myuUrl + '/de/de/dashboard',
       'x-originator-type': 'web',
     };
+    // APK MyUrlFactory.smali: /v4/accounts/%s/vehicles/?sdp=ALL&stage=ALL&brand=FIAT
+    // brandCode is FIAT for FIAT / Alfa-EU, REST for Jeep-EU (py-uconnect).
+    const vehiclesPath =
+      '/v4/accounts/' +
+      this.UID +
+      '/vehicles/?sdp=ALL&stage=ALL&brand=' +
+      this.brandCode;
     const signed = aws4.sign(
       {
         host: 'channels.sdpr-01.fcagcv.com',
-        path: '/v4/accounts/' + this.UID + '/vehicles?stage=ALL',
+        path: vehiclesPath,
         service: 'execute-api',
         method: 'GET',
         region: 'eu-west-1',
@@ -364,7 +448,7 @@ class Fiat extends utils.Adapter {
     try {
       response = await this.requestClient({
         method: 'get',
-        url: 'https://channels.sdpr-01.fcagcv.com/v4/accounts/' + this.UID + '/vehicles?stage=ALL',
+        url: 'https://channels.sdpr-01.fcagcv.com' + vehiclesPath,
         headers: headers,
       });
     } catch (error) {
@@ -406,10 +490,13 @@ class Fiat extends utils.Adapter {
         { command: 'RDU', name: 'Unlock' },
         { command: 'RDL', name: 'Lock' },
         { command: 'ROLIGHTS', name: 'Lights' },
-        // { command: "ROHVACON", name: "AC On" },
-        // { command: "ROHVACOFF", name: "AC Off" },
+        { command: 'ROHVACON', name: 'AC On' },
+        { command: 'ROHVACOFF', name: 'AC Off' },
         { command: 'ROTRUNKLOCK', name: 'Trunk Lock' },
         { command: 'ROTRUNKUNLOCK', name: 'Trunk Unlock' },
+        { command: 'ROLIFTGATELOCK', name: 'Liftgate Lock' },
+        { command: 'ROLIFTGATEUNLOCK', name: 'Liftgate Unlock' },
+        { command: 'ACV', name: 'Cabin Ventilation' },
         { command: 'REON', name: 'Engine on' },
         { command: 'REOFF', name: 'Engine off' },
         { command: 'HBLF', name: 'Locate Horn Lights' },
@@ -417,6 +504,7 @@ class Fiat extends utils.Adapter {
         { command: 'CNOW', name: 'Charge Now' },
         { command: 'DEEPREFRESH', name: 'Deep refresh charging state' },
         { command: 'ROPRECOND', name: 'Precondition/Klima' },
+        { command: 'ROPRECOND_OFF', name: 'Precondition/Klima Off' },
         {
           command: 'CPPLUS',
           name: 'Change Schedule',
@@ -504,8 +592,10 @@ class Fiat extends utils.Adapter {
    * @param {string} url
    * @param {string | null} [path]
    * @param {string} [data]
+   * @param {{swallow404?: boolean}} [options]
    */
-  async getVehicleStatus(vin, url, path, data) {
+  async getVehicleStatus(vin, url, path, data, options) {
+    const swallow404 = !options || options.swallow404 !== false;
     let method = 'GET';
     if (data) {
       method = 'POST';
@@ -564,6 +654,9 @@ class Fiat extends utils.Adapter {
       if (err && err.response && err.response.status === 404) {
         this.log.debug('Get vehicles failed: ' + path);
         this.log.debug(JSON.stringify(err.response.data));
+        if (!swallow404) {
+          throw err;
+        }
         return {};
       }
       if (err && err.response && err.response.status === 403) {
@@ -617,22 +710,14 @@ class Fiat extends utils.Adapter {
       if (!state || state.ack) {
         return;
       }
+      if (!id.includes('.remote.')) {
+        return;
+      }
       const vin = id.split('.')[2];
       const command = id.split('.')[4];
-      let action = 'remote';
-      if (command === 'VF') {
-        action = 'location';
-      }
-      if (command === 'DEEPREFRESH') {
-        action = 'ev';
-      }
-      if (command === 'CNOW') {
-        action = 'ev/chargenow';
-      }
-      if (command === 'CPPLUS') {
-        action = 'schedule';
-      }
-      if (!id.includes('.remote.')) {
+      const meta = this.remoteCommand(command);
+      if (!meta) {
+        this.log.warn('Unsupported remote command: ' + command);
         return;
       }
 
@@ -646,46 +731,102 @@ class Fiat extends utils.Adapter {
         return;
       }
 
-      /** @type {Record<string, any>} */
-      const data = {
-        command: command,
-        pinAuth: this.pinAuth,
-      };
-      let url = '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/' + action;
-      if (command === 'CPPLUS') {
-        try {
-          data.schedules = JSON.parse(String(state.val));
-          url = '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/ev/' + action;
-        } catch (error) {
-          this.log.error('Failed to parse schedule');
-          this.log.error(String(error));
-        }
-      }
-
       try {
-        const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data));
-        if (result && result.responseStatus !== 'pending') {
-          this.log.warn(JSON.stringify(result));
-        }
+        await this.sendRemoteCommand(vin, command, meta, state.val);
+
         this.updateTimeout = setTimeout(async () => {
           await this.fetchVehicle(
             vin,
-            '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown',
+            '/v1/accounts/' + this.UID + '/vehicles/' + vin + '/location/lastknown/',
             'location',
             'get vehicles location failed',
           );
-          await this.fetchVehicle(
-            vin,
-            '/v2/accounts/' + this.UID + '/vehicles/' + vin + '/status',
-            'status',
-            'get vehicles status failed',
-          );
+          await this.fetchVehicleStatus(vin);
         }, 10 * 1000);
       } catch {
         this.log.error('Failed to set remote');
       }
     } catch (err) {
       this.log.error('Error in OnStateChange: ' + err);
+    }
+  }
+
+  /**
+   * Send a remote command. CPPLUS sends a schedule payload (the parsed JSON
+   * merged with `pinAuth`, no top-level `command` — py-uconnect:set_charge_schedule);
+   * everything else is { command, pinAuth }. On a 403 the command's documented
+   * fallback (e.g. CNOW → START_CHARGE on /v4) is tried once. 404 is passed
+   * through (not swallowed) so the fallback can fire.
+   *
+   * @param {string} vin
+   * @param {string} command
+   * @param {{apiVersion: string, segment: string, fallback?: {apiVersion: string, segment: string, command: string}}} meta
+   * @param {ioBroker.StateValue} value
+   */
+  async sendRemoteCommand(vin, command, meta, value) {
+    /** @type {Record<string, any>} */
+    let data;
+    if (command === 'CPPLUS') {
+      let parsed;
+      try {
+        parsed = JSON.parse(String(value));
+      } catch (error) {
+        this.log.error('Failed to parse schedule');
+        this.log.error(String(error));
+        return;
+      }
+      // py-uconnect sends `{...schedule, pinAuth}` against /v4/.../ev/schedule/.
+      // Accept both shapes from the user: a Schedule object as-is, or an array
+      // wrapped as `{ schedules: [...] }` (the historical adapter default).
+      if (Array.isArray(parsed)) {
+        data = { schedules: parsed, pinAuth: this.pinAuth };
+      } else {
+        data = { ...parsed, pinAuth: this.pinAuth };
+      }
+    } else {
+      data = { command, pinAuth: this.pinAuth };
+    }
+
+    const url =
+      '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
+    try {
+      const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
+        swallow404: false,
+      });
+      if (result && result.responseStatus !== 'pending') {
+        this.log.warn(JSON.stringify(result));
+      }
+      return result;
+    } catch (error) {
+      const err = /** @type {any} */ (error);
+      const status = err && err.response && err.response.status;
+      if (meta.fallback && (status === 403 || status === 404)) {
+        this.log.warn(
+          command +
+            ' returned ' +
+            status +
+            ', retrying with ' +
+            meta.fallback.command +
+            ' (' +
+            meta.fallback.apiVersion +
+            ')',
+        );
+        const fbUrl =
+          '/' +
+          meta.fallback.apiVersion +
+          '/accounts/' +
+          this.UID +
+          '/vehicles/' +
+          vin +
+          '/' +
+          meta.fallback.segment +
+          '/';
+        const fbData = { ...data, command: meta.fallback.command };
+        return await this.getVehicleStatus(vin, fbUrl, null, JSON.stringify(fbData), {
+          swallow404: false,
+        });
+      }
+      throw err;
     }
   }
 
