@@ -219,8 +219,65 @@ class Fiat extends utils.Adapter {
     }
   }
 
-  async login() {
+  /**
+   * Helper: snapshot the current cookie jar for the given URL.
+   *
+   * @param {string} url
+   * @returns {string}
+   */
+  cookieSnapshot(url) {
     try {
+      const cookies = this.cookieJar.getCookiesSync(url);
+      return cookies.length
+        ? cookies.map((c) => c.key + '=' + (c.value || '').slice(0, 12) + '…').join('; ')
+        : '(empty)';
+    } catch (error) {
+      return '(read error: ' + String(error) + ')';
+    }
+  }
+
+  /**
+   * Helper: log the relevant fields from a Gigya REST envelope without dumping
+   * the entire body (which can contain tokens we don't want in info logs).
+   *
+   * @param {string} step
+   * @param {any} body
+   */
+  logGigya(step, body) {
+    if (!body || typeof body !== 'object') {
+      this.log.info(step + ': empty body');
+      return;
+    }
+    const summary = {
+      statusCode: body.statusCode,
+      errorCode: body.errorCode,
+      errorMessage: body.errorMessage,
+      errorDetails: body.errorDetails,
+      errorFlags: body.errorFlags,
+      callId: body.callId,
+    };
+    this.log.info(step + ': ' + JSON.stringify(summary));
+  }
+
+  async login() {
+    this.log.info(
+      'login() type=' +
+        this.type +
+        ' brand=' +
+        this.brandCode +
+        ' loginUrl=https://' +
+        this.loginUrl +
+        ' myuUrl=https://' +
+        this.myuUrl +
+        ' loginApiKey=' +
+        (this.loginApiKey || '').slice(0, 8) +
+        '… apiKey=' +
+        (this.apiKey || '').slice(0, 8) +
+        '…',
+    );
+
+    try {
+      this.log.info('Step 1/5: Gigya bootstrap');
       const bootstrap = await this.requestClient({
         method: 'get',
         url:
@@ -245,8 +302,20 @@ class Fiat extends utils.Adapter {
         this.log.error('first page failed');
         throw new Error('first page failed');
       }
-      this.log.debug(JSON.stringify(bootstrap.data));
+      const setCookieHeader = bootstrap.headers && bootstrap.headers['set-cookie'];
+      this.log.info(
+        'Step 1/5: bootstrap http=' +
+          bootstrap.status +
+          ' set-cookie-count=' +
+          (Array.isArray(setCookieHeader) ? setCookieHeader.length : setCookieHeader ? 1 : 0),
+      );
+      if (setCookieHeader) {
+        this.log.debug('Set-Cookie: ' + JSON.stringify(setCookieHeader));
+      }
+      this.log.info('Cookies after bootstrap: ' + this.cookieSnapshot('https://' + this.loginUrl + '/'));
+      this.logGigya('Step 1/5: bootstrap body', bootstrap.data);
 
+      this.log.info('Step 2/5: Gigya accounts.login');
       const loginResponse = await this.requestClient({
         method: 'post',
         url: 'https://' + this.loginUrl + '/accounts.login',
@@ -279,19 +348,32 @@ class Fiat extends utils.Adapter {
         ].join('&'),
       });
 
+      this.logGigya('Step 2/5: accounts.login', loginResponse.data);
+
       if (!loginResponse.data) {
         this.log.error('Login failed maybe incorrect login information');
         throw new Error('Login failed maybe incorrect login information');
       }
       this.log.debug(JSON.stringify(loginResponse.data));
       if (!loginResponse.data.sessionInfo) {
+        if (loginResponse.data.errorCode === 400006) {
+          this.log.error(
+            'Gigya blocked the login (errorCode 400006, "' +
+              loginResponse.data.errorDetails +
+              '"). This usually means the GMID cookie from the bootstrap was not sent back. ' +
+              'Cookies for the login host: ' +
+              this.cookieSnapshot('https://' + this.loginUrl + '/'),
+          );
+        }
         this.log.error('sessionInfo missing');
         throw new Error('sessionInfo missing');
       }
       this.loginToken = loginResponse.data.sessionInfo.login_token;
       this.UID = loginResponse.data.userInfo.UID;
+      this.log.info('Step 2/5: accounts.login OK UID=' + this.UID);
       this.json2iob.parse('general', loginResponse.data);
 
+      this.log.info('Step 3/5: Gigya getJWT');
       const jwtResponse = await this.requestClient({
         method: 'get',
         url:
@@ -314,6 +396,7 @@ class Fiat extends utils.Adapter {
         },
       });
 
+      this.logGigya('Step 3/5: getJWT', jwtResponse.data);
       if (!jwtResponse.data) {
         this.log.error('JWT failed maybe incorrect login information');
         throw new Error('JWT failed');
@@ -324,7 +407,9 @@ class Fiat extends utils.Adapter {
         throw new Error('id_token missing');
       }
       this.idToken = jwtResponse.data.id_token;
+      this.log.info('Step 3/5: getJWT OK id_token len=' + this.idToken.length);
 
+      this.log.info('Step 4/5: FCA exchange Gigya JWT → Cognito identity token');
       const fcaResponse = await this.requestClient({
         method: 'post',
         url: 'https://authz.sdpr-01.fcagcv.com/v2/cognito/identity/token',
@@ -358,7 +443,9 @@ class Fiat extends utils.Adapter {
       }
       this.token = fcaResponse.data.Token;
       this.identityId = fcaResponse.data.IdentityId;
+      this.log.info('Step 4/5: Cognito token OK IdentityId=' + this.identityId);
 
+      this.log.info('Step 5/5: AWS GetCredentialsForIdentity');
       const data = JSON.stringify({
         IdentityId: this.identityId,
         Logins: {
@@ -394,11 +481,23 @@ class Fiat extends utils.Adapter {
         this.log.error('Credentials missing');
         throw new Error('Credentials missing');
       }
+      this.log.info(
+        'Step 5/5: AWS creds OK expires=' +
+          (this.amz.Credentials.Expiration || 'unknown') +
+          ' key=' +
+          (this.amz.Credentials.AccessKeyId || '').slice(0, 8) +
+          '…',
+      );
     } catch (error) {
       const err = /** @type {any} */ (error);
       this.log.error(String(err));
       if (err && err.response) {
-        this.log.error(JSON.stringify(err.response.data));
+        this.log.error(
+          'http=' +
+            err.response.status +
+            ' body=' +
+            JSON.stringify(err.response.data).slice(0, 800),
+        );
       }
       throw err;
     }
