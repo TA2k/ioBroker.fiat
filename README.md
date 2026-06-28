@@ -29,6 +29,9 @@ fiat.0.id.remote auf true setzen steuert den jeweiligen Befehl
 https://forum.iobroker.net/topic/46378/test-adapter-fiat-v0-0-x
 
 ## Changelog
+### 0.0.11 (2026-06-28)
+- Updated Dependencies and latest API changes
+
 ### 0.0.10 (2024-06-10)
 
 - added schedule edit via remote.CPPLUS

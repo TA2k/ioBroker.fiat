@@ -1,6 +1,6 @@
 {
   "name": "iobroker.fiat",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "fiat/jeep adapter",
   "author": {
     "name": "TA2k",
@@ -37,6 +37,15 @@
     "globals": "^17.7.0",
     "typescript": "^6.0.3"
   },
+  "files": [
+    "admin{,/!(src)/**}/!(tsconfig|tsconfig.*|.eslintrc).{json,json5}",
+    "admin{,/!(src)/**}/*.{html,css,png,svg,jpg,js}",
+    "lib/",
+    "www/",
+    "io-package.json",
+    "LICENSE",
+    "main.js"
+  ],
   "main": "main.js",
   "scripts": {
     "test:js": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup).js}\"",

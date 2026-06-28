@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "fiat",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "news": {
+      "0.0.11": {
+        "en": "Updated Dependencies and latest API changes",
+        "de": "Abhängigkeiten aktualisiert und neueste API-Änderungen",
+        "ru": "Обновленные зависимости и последние изменения API",
+        "pt": "Dependências atualizadas e as últimas alterações da API",
+        "nl": "Bijgewerkte afhankelijkheden en laatste API wijzigingen",
+        "fr": "Mise à jour des dépendances et des derniers changements d'API",
+        "it": "Dipendenze aggiornate e ultime modifiche API",
+        "es": "Dependencias actualizadas y cambios más recientes de API",
+        "pl": "Aktualizacja zależności i najnowsze zmiany API",
+        "uk": "Оновлені залежності та останні зміни API",
+        "zh-cn": "更新的依赖和最新的 API 更改"
+      },
       "0.0.10": {
         "en": "added schedule edit via remote.CPPLUS",
         "de": "hinzugefügt Schedule bearbeiten über remote.CPPLUS",
@@ -31,10 +44,6 @@
       "0.0.3": {
         "en": "Added precondition",
         "de": "Vorklimatisierung hinzugefügt"
-      },
-      "0.0.2": {
-        "en": "Enable deep refresh to update charging state",
-        "de": "Deep Refresh hinzugefügt um den Ladezustand zu aktualisieren"
       }
     },
     "title": "Fiat/Jeep",
@@ -62,8 +71,14 @@
       "pl": "adapter Fiat/Jeep",
       "zh-cn": "法定适配器"
     },
-    "authors": ["TA2k <tombox2020@gmail.com>"],
-    "keywords": ["fiat", "500e", "jeep"],
+    "authors": [
+      "TA2k <tombox2020@gmail.com>"
+    ],
+    "keywords": [
+      "fiat",
+      "500e",
+      "jeep"
+    ],
     "license": "MIT",
     "platform": "Javascript/Node.js",
     "main": "main.js",
@@ -89,8 +104,14 @@
       }
     ]
   },
-  "encryptedNative": ["password", "pin"],
-  "protectedNative": ["password", "pin"],
+  "encryptedNative": [
+    "password",
+    "pin"
+  ],
+  "protectedNative": [
+    "password",
+    "pin"
+  ],
   "native": {
     "user": "",
     "password": "",
