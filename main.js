@@ -316,6 +316,28 @@ class Fiat extends utils.Adapter {
       this.logGigya('Step 1/5: bootstrap body', bootstrap.data);
 
       this.log.info('Step 2/5: Gigya accounts.login');
+      // Use URLSearchParams so each field is URL-encoded uniformly. The old
+      // `loginID=' + this.config.user` concatenation skipped encoding on the
+      // email address — values containing `+`, `&`, `=` would corrupt the
+      // form and Gigya answers `errorCode 400006, errorFlags missingKey`.
+      const loginForm = new URLSearchParams({
+        loginID: this.config.user,
+        password: this.config.password,
+        sessionExpiration: '7776000',
+        targetEnv: 'jssdk',
+        include: 'profile,data,emails,subscriptions,preferences,',
+        includeUserInfo: 'true',
+        loginMode: 'standard',
+        lang: 'de0de',
+        riskContext: JSON.stringify({ b0: 52569, b2: 8, b5: 1 }),
+        APIKey: this.loginApiKey || '',
+        source: 'showScreenSet',
+        sdk: 'js_latest',
+        authMode: 'cookie',
+        pageURL: 'https://' + this.myuUrl + '/de/de/login',
+        sdkBuild: '12234',
+        format: 'json',
+      });
       const loginResponse = await this.requestClient({
         method: 'post',
         url: 'https://' + this.loginUrl + '/accounts.login',
@@ -328,24 +350,7 @@ class Fiat extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1',
           referer: 'https://' + this.myuUrl + '/de/de/login',
         },
-        data: [
-          'loginID=' + this.config.user,
-          'password=' + encodeURIComponent(this.config.password),
-          'sessionExpiration=7776000',
-          'targetEnv=jssdk',
-          'include=profile,data,emails,subscriptions,preferences,',
-          'includeUserInfo=true',
-          'loginMode=standard',
-          'lang=de0de',
-          'riskContext={"b0":52569,"b2":8,"b5":1}',
-          'APIKey=' + this.loginApiKey,
-          'source=showScreenSet',
-          'sdk=js_latest',
-          'authMode=cookie',
-          'pageURL=https://' + this.myuUrl + '/de/de/login',
-          'sdkBuild=12234',
-          'format=json',
-        ].join('&'),
+        data: loginForm.toString(),
       });
 
       this.logGigya('Step 2/5: accounts.login', loginResponse.data);
