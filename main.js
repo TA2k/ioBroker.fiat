@@ -259,6 +259,29 @@ class Fiat extends utils.Adapter {
     this.log.info(step + ': ' + JSON.stringify(summary));
   }
 
+  /**
+   * Extract the `name=value` pair from each Set-Cookie header and join them
+   * into a single Cookie-header string. Some Node 22 / http-cookie-agent
+   * combinations silently fail to persist the GMID into the tough-cookie jar
+   * (observed on production ioBroker hosts: bootstrap returns 3 Set-Cookie
+   * headers, jar reads back as empty). Gigya then rejects accounts.login with
+   * `errorCode 400006 / errorFlags missingKey`. Replaying the cookies via an
+   * explicit Cookie header avoids that whole class of jar/agent bugs.
+   *
+   * @param {string[] | string | undefined} setCookieHeaders
+   * @returns {string}
+   */
+  cookieHeaderFromSetCookie(setCookieHeaders) {
+    if (!setCookieHeaders) {
+      return '';
+    }
+    const headers = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+    return headers
+      .map((h) => String(h).split(';')[0].trim())
+      .filter(Boolean)
+      .join('; ');
+  }
+
   async login() {
     this.log.info(
       'login() type=' +
@@ -312,7 +335,23 @@ class Fiat extends utils.Adapter {
       if (setCookieHeader) {
         this.log.debug('Set-Cookie: ' + JSON.stringify(setCookieHeader));
       }
-      this.log.info('Cookies after bootstrap: ' + this.cookieSnapshot('https://' + this.loginUrl + '/'));
+      // Some Node 22 / http-cookie-agent combinations on Linux fail to persist
+      // the GMID into the tough-cookie jar (observed: bootstrap returns 3
+      // Set-Cookie headers, jar reads back as empty). Replaying the cookies
+      // via an explicit Cookie header on the following calls sidesteps the
+      // jar entirely.
+      const gigyaCookieHeader = this.cookieHeaderFromSetCookie(setCookieHeader);
+      this.log.info(
+        'Cookies after bootstrap: jar=' +
+          this.cookieSnapshot('https://' + this.loginUrl + '/') +
+          ' explicit=' +
+          (gigyaCookieHeader
+            ? gigyaCookieHeader
+              .split('; ')
+              .map((c) => c.split('=')[0])
+              .join(',')
+            : '(none)'),
+      );
       this.logGigya('Step 1/5: bootstrap body', bootstrap.data);
 
       this.log.info('Step 2/5: Gigya accounts.login');
@@ -349,6 +388,7 @@ class Fiat extends utils.Adapter {
           'user-agent':
             'Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1',
           referer: 'https://' + this.myuUrl + '/de/de/login',
+          ...(gigyaCookieHeader ? { cookie: gigyaCookieHeader } : {}),
         },
         data: loginForm.toString(),
       });
@@ -378,6 +418,12 @@ class Fiat extends utils.Adapter {
       this.log.info('Step 2/5: accounts.login OK UID=' + this.UID);
       this.json2iob.parse('general', loginResponse.data);
 
+      // Merge any additional cookies set by accounts.login (e.g. glt_*) into
+      // the explicit cookie header so getJWT sees the full session.
+      const loginSetCookie = loginResponse.headers && loginResponse.headers['set-cookie'];
+      const loginCookieHeader = this.cookieHeaderFromSetCookie(loginSetCookie);
+      const sessionCookieHeader = [gigyaCookieHeader, loginCookieHeader].filter(Boolean).join('; ');
+
       this.log.info('Step 3/5: Gigya getJWT');
       const jwtResponse = await this.requestClient({
         method: 'get',
@@ -398,6 +444,7 @@ class Fiat extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 12_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1',
           'accept-language': 'de-de',
           referer: 'https://' + this.myuUrl + '/de/de/dashboard',
+          ...(sessionCookieHeader ? { cookie: sessionCookieHeader } : {}),
         },
       });
 
