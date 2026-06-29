@@ -271,6 +271,36 @@ class Fiat extends utils.Adapter {
    * @param {string[] | string | undefined} setCookieHeaders
    * @returns {string}
    */
+  /**
+   * Compact, value-free preview of a Cookie header string. We log cookie
+   * NAMES only — values would leak the session.
+   *
+   * @param {string} cookieHeader
+   * @returns {string}
+   */
+  cookieNames(cookieHeader) {
+    if (!cookieHeader) {
+      return '(none)';
+    }
+    return cookieHeader
+      .split(';')
+      .map((c) => c.trim().split('=')[0])
+      .filter(Boolean)
+      .join(',');
+  }
+
+  /**
+   * Extract the `name=value` pair from each Set-Cookie header and join them
+   * into a single Cookie-header string. Some Node 22 / http-cookie-agent
+   * combinations silently fail to persist the GMID into the tough-cookie jar
+   * (observed on production ioBroker hosts: bootstrap returns 3 Set-Cookie
+   * headers, jar reads back as empty). Gigya then rejects accounts.login with
+   * `errorCode 400006 / errorFlags missingKey`. Replaying the cookies via an
+   * explicit Cookie header avoids that whole class of jar/agent bugs.
+   *
+   * @param {string[] | string | undefined} setCookieHeaders
+   * @returns {string}
+   */
   cookieHeaderFromSetCookie(setCookieHeaders) {
     if (!setCookieHeaders) {
       return '';
@@ -393,6 +423,10 @@ class Fiat extends utils.Adapter {
         data: loginForm.toString(),
       });
 
+      this.log.info(
+        'Step 2/5: accounts.login sent cookies=' + this.cookieNames(gigyaCookieHeader),
+      );
+
       this.logGigya('Step 2/5: accounts.login', loginResponse.data);
 
       if (!loginResponse.data) {
@@ -423,8 +457,19 @@ class Fiat extends utils.Adapter {
       const loginSetCookie = loginResponse.headers && loginResponse.headers['set-cookie'];
       const loginCookieHeader = this.cookieHeaderFromSetCookie(loginSetCookie);
       const sessionCookieHeader = [gigyaCookieHeader, loginCookieHeader].filter(Boolean).join('; ');
+      this.log.info(
+        'Step 2/5: accounts.login set-cookie-count=' +
+          (Array.isArray(loginSetCookie) ? loginSetCookie.length : loginSetCookie ? 1 : 0) +
+          ' new=' +
+          this.cookieNames(loginCookieHeader),
+      );
+      if (loginSetCookie) {
+        this.log.debug('accounts.login Set-Cookie: ' + JSON.stringify(loginSetCookie));
+      }
 
-      this.log.info('Step 3/5: Gigya getJWT');
+      this.log.info(
+        'Step 3/5: Gigya getJWT (GET) cookies=' + this.cookieNames(sessionCookieHeader),
+      );
       const jwtResponse = await this.requestClient({
         method: 'get',
         url:
