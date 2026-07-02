@@ -964,12 +964,23 @@ class Fiat extends utils.Adapter {
     let data;
     if (command === 'CPPLUS') {
       let parsed;
-      try {
-        parsed = JSON.parse(String(value));
-      } catch (error) {
-        this.log.error('Failed to parse schedule');
-        this.log.error(String(error));
+      // ioBroker can hand us either the raw JSON string (common.type = string,
+      // typical when the user edits the state manually) or an already-parsed
+      // object/array (e.g. when a script does `setState(id, {...})`).
+      if (value === null || value === undefined) {
+        this.log.error('CPPLUS: schedule state is empty');
         return;
+      }
+      if (typeof value === 'object') {
+        parsed = value;
+      } else {
+        try {
+          parsed = JSON.parse(String(value));
+        } catch (error) {
+          this.log.error('Failed to parse schedule');
+          this.log.error(String(error));
+          return;
+        }
       }
       // py-uconnect sends `{...schedule, pinAuth}` against /v4/.../ev/schedule/.
       // Accept both shapes from the user: a Schedule object as-is, or an array
