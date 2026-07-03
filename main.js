@@ -912,6 +912,18 @@ class Fiat extends utils.Adapter {
       const vin = id.split('.')[2];
       const command = id.split('.')[4];
       const meta = this.remoteCommand(command);
+      this.log.info(
+        'onStateChange: id=' +
+          id +
+          ' vin=' +
+          vin +
+          ' command=' +
+          command +
+          ' val=' +
+          (typeof state.val === 'object' ? JSON.stringify(state.val).slice(0, 200) : String(state.val)) +
+          ' meta=' +
+          (meta ? meta.apiVersion + '/' + meta.segment : 'UNKNOWN'),
+      );
       if (!meta) {
         this.log.warn('Unsupported remote command: ' + command);
         return;
@@ -920,7 +932,7 @@ class Fiat extends utils.Adapter {
       try {
         await this.receivePinAuth();
       } catch (error) {
-        this.log.error('Failed to authenticate pin');
+        this.log.error('Failed to authenticate pin for command ' + command);
         if (error) {
           this.log.error(String(error));
         }
@@ -939,8 +951,10 @@ class Fiat extends utils.Adapter {
           );
           await this.fetchVehicleStatus(vin);
         }, 10 * 1000);
-      } catch {
-        this.log.error('Failed to set remote');
+      } catch (error) {
+        const err = /** @type {any} */ (error);
+        const status = err && err.response && err.response.status;
+        this.log.error('Failed to set remote command ' + command + ' (http=' + status + ')');
       }
     } catch (err) {
       this.log.error('Error in OnStateChange: ' + err);
@@ -996,6 +1010,28 @@ class Fiat extends utils.Adapter {
 
     const url =
       '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
+    // Log the outbound remote command with a pinAuth-redacted body preview
+    // so failures like "Wrong or missing request body" can be diagnosed
+    // from the ioBroker log alone.
+    const preview = (() => {
+      try {
+        const clone = { ...data };
+        if (clone.pinAuth) {
+          clone.pinAuth = '<redacted len=' + String(clone.pinAuth).length + '>';
+        }
+        return JSON.stringify(clone);
+      } catch {
+        return '(unstringifiable)';
+      }
+    })();
+    this.log.info(
+      'Remote: cmd=' +
+        command +
+        ' method=POST url=https://channels.sdpr-01.fcagcv.com' +
+        url +
+        ' body=' +
+        preview,
+    );
     try {
       const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
         swallow404: false,
@@ -1029,6 +1065,7 @@ class Fiat extends utils.Adapter {
           meta.fallback.segment +
           '/';
         const fbData = { ...data, command: meta.fallback.command };
+        this.log.info('Remote fallback: url=https://channels.sdpr-01.fcagcv.com' + fbUrl);
         return await this.getVehicleStatus(vin, fbUrl, null, JSON.stringify(fbData), {
           swallow404: false,
         });
