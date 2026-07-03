@@ -150,6 +150,10 @@ class Fiat extends utils.Adapter {
         segment: 'ev/chargenow',
         fallback: { apiVersion: 'v4', segment: 'ev/chargenow', command: 'START_CHARGE' },
       },
+      // CPPLUS: /v4/.../ev/schedule/ per py-uconnect set_charge_schedule().
+      // Payload is a single flat schedule object (no `command` key) merged
+      // with pinAuth. Array form is rejected by v4 with "Wrong or missing
+      // request body".
       CPPLUS: { apiVersion: 'v4', segment: 'ev/schedule' },
     };
     return map[command];
@@ -706,62 +710,24 @@ class Fiat extends utils.Adapter {
           name: 'Change Schedule',
           role: 'json',
           type: 'string',
-          def: `[
-        {
-            "cabinPriority": false,
-            "chargeToFull": false,
-            "enableScheduleType": true,
-            "endTime": "13:05",
-            "repeatSchedule": true,
-            "scheduleType": "CHARGE",
-            "scheduledDays": {
-                "friday": true,
-                "monday": true,
-                "saturday": true,
-                "sunday": true,
-                "thursday": true,
-                "tuesday": true,
-                "wednesday": true
-            },
-            "startTime": "13:00"
-        },
-        {
-            "cabinPriority": true,
-            "chargeToFull": false,
-            "enableScheduleType": false,
-            "endTime": "11:45",
-            "repeatSchedule": false,
-            "scheduleType": "CLIMATE",
-            "scheduledDays": {
-                "friday": false,
-                "monday": false,
-                "saturday": false,
-                "sunday": false,
-                "thursday": false,
-                "tuesday": false,
-                "wednesday": false
-            },
-            "startTime": "11:45"
-        },
-        {
-            "cabinPriority": false,
-            "chargeToFull": false,
-            "enableScheduleType": false,
-            "endTime": "00:00",
-            "repeatSchedule": true,
-            "scheduleType": "CHARGE",
-            "scheduledDays": {
-                "friday": false,
-                "monday": false,
-                "saturday": false,
-                "sunday": false,
-                "thursday": false,
-                "tuesday": false,
-                "wednesday": false
-            },
-            "startTime": "00:00"
-        }
-    ]`,
+          def: `{
+    "cabinPriority": false,
+    "chargeToFull": false,
+    "enableScheduleType": true,
+    "endTime": "13:05",
+    "repeatSchedule": true,
+    "scheduleType": "CHARGE",
+    "scheduledDays": {
+        "friday": true,
+        "monday": true,
+        "saturday": true,
+        "sunday": true,
+        "thursday": true,
+        "tuesday": true,
+        "wednesday": true
+    },
+    "startTime": "13:00"
+}`,
         },
       ];
       for (const remote of remoteArray) {
@@ -977,10 +943,11 @@ class Fiat extends utils.Adapter {
     /** @type {Record<string, any>} */
     let data;
     if (command === 'CPPLUS') {
+      // py-uconnect set_charge_schedule():  data = schedule | {"pinAuth": ...}
+      // The state value is expected to be a single flat schedule object
+      // (or its JSON-string representation). The historical array default
+      // is not accepted by /v4/.../ev/schedule/.
       let parsed;
-      // ioBroker can hand us either the raw JSON string (common.type = string,
-      // typical when the user edits the state manually) or an already-parsed
-      // object/array (e.g. when a script does `setState(id, {...})`).
       if (value === null || value === undefined) {
         this.log.error('CPPLUS: schedule state is empty');
         return;
@@ -996,14 +963,14 @@ class Fiat extends utils.Adapter {
           return;
         }
       }
-      // py-uconnect sends `{...schedule, pinAuth}` against /v4/.../ev/schedule/.
-      // Accept both shapes from the user: a Schedule object as-is, or an array
-      // wrapped as `{ schedules: [...] }` (the historical adapter default).
       if (Array.isArray(parsed)) {
-        data = { schedules: parsed, pinAuth: this.pinAuth };
-      } else {
-        data = { ...parsed, pinAuth: this.pinAuth };
+        this.log.error(
+          'CPPLUS: /v4 schedule endpoint expects a single schedule object, not an array. ' +
+            'Set remote.CPPLUS to a single {scheduleType, startTime, endTime, ...} object.',
+        );
+        return;
       }
+      data = { ...parsed, pinAuth: this.pinAuth };
     } else {
       data = { command, pinAuth: this.pinAuth };
     }
