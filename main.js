@@ -905,6 +905,14 @@ class Fiat extends utils.Adapter {
         }
         return;
       }
+      this.log.info(
+        'pinAuth [after receivePinAuth in onStateChange] typeof=' +
+          typeof pinAuth +
+          ' len=' +
+          (pinAuth ? String(pinAuth).length : 0) +
+          ' head=' +
+          String(pinAuth || '').slice(0, 20),
+      );
 
       try {
         await this.sendRemoteCommand(vin, command, meta, state.val, pinAuth);
@@ -945,19 +953,28 @@ class Fiat extends utils.Adapter {
     const url =
       '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
     this.log.info(
-      'sendRemoteCommand: cmd=' +
+      'sendRemoteCommand [entry] cmd=' +
         command +
         ' pinAuth typeof=' +
         typeof pinAuth +
         ' len=' +
-        (pinAuth ? String(pinAuth).length : 0),
+        (pinAuth ? String(pinAuth).length : 0) +
+        ' head=' +
+        String(pinAuth || '').slice(0, 20),
     );
 
-    // Small closure so the CPPLUS array path (loop over schedules) and every
-    // other command (single call) can share the same POST + logging + fallback
-    // logic.  Also handles the pinAuth-redacted body preview.
     /** @param {Record<string, any>} data */
     const post = async (data) => {
+      this.log.info(
+        'post [entry] cmd=' +
+          command +
+          ' data.pinAuth typeof=' +
+          typeof data.pinAuth +
+          ' len=' +
+          (data.pinAuth ? String(data.pinAuth).length : 0) +
+          ' head=' +
+          String(data.pinAuth || '').slice(0, 20),
+      );
       this.log.info(
         'Remote: cmd=' +
           command +
@@ -1056,11 +1073,27 @@ class Fiat extends utils.Adapter {
         if (schedules.length > 1) {
           this.log.info('CPPLUS: sending schedule ' + (i + 1) + '/' + schedules.length);
         }
+        this.log.info(
+          'CPPLUS [before post] pinAuth typeof=' +
+            typeof pinAuth +
+            ' len=' +
+            (pinAuth ? String(pinAuth).length : 0) +
+            ' head=' +
+            String(pinAuth || '').slice(0, 20),
+        );
         lastResult = await post({ ...schedule, pinAuth: pinAuth });
       }
       return lastResult;
     }
 
+    this.log.info(
+      'default cmd [before post] pinAuth typeof=' +
+        typeof pinAuth +
+        ' len=' +
+        (pinAuth ? String(pinAuth).length : 0) +
+        ' head=' +
+        String(pinAuth || '').slice(0, 20),
+    );
     return await post({ command, pinAuth: pinAuth });
   }
 
