@@ -964,7 +964,7 @@ class Fiat extends utils.Adapter {
           ' method=POST url=https://channels.sdpr-01.fcagcv.com' +
           url +
           ' pinAuth=' +
-          data.pinAuth,
+          String(data.pinAuth || '').slice(0, 20),
       );
       try {
         const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
