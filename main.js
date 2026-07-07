@@ -895,8 +895,9 @@ class Fiat extends utils.Adapter {
         return;
       }
 
+      let pinAuth;
       try {
-        await this.receivePinAuth();
+        pinAuth = await this.receivePinAuth();
       } catch (error) {
         this.log.error('Failed to authenticate pin for command ' + command);
         if (error) {
@@ -906,7 +907,7 @@ class Fiat extends utils.Adapter {
       }
 
       try {
-        await this.sendRemoteCommand(vin, command, meta, state.val);
+        await this.sendRemoteCommand(vin, command, meta, state.val, pinAuth);
 
         this.updateTimeout = setTimeout(async () => {
           await this.fetchVehicle(
@@ -938,17 +939,18 @@ class Fiat extends utils.Adapter {
    * @param {string} command
    * @param {{apiVersion: string, segment: string, fallback?: {apiVersion: string, segment: string, command: string}}} meta
    * @param {ioBroker.StateValue} value
+   * @param {string} pinAuth
    */
-  async sendRemoteCommand(vin, command, meta, value) {
+  async sendRemoteCommand(vin, command, meta, value, pinAuth) {
     const url =
       '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
     this.log.info(
       'sendRemoteCommand: cmd=' +
         command +
-        ' this.pinAuth typeof=' +
-        typeof this.pinAuth +
+        ' pinAuth typeof=' +
+        typeof pinAuth +
         ' len=' +
-        (this.pinAuth ? String(this.pinAuth).length : 0),
+        (pinAuth ? String(pinAuth).length : 0),
     );
 
     // Small closure so the CPPLUS array path (loop over schedules) and every
@@ -1065,14 +1067,22 @@ class Fiat extends utils.Adapter {
         if (schedules.length > 1) {
           this.log.info('CPPLUS: sending schedule ' + (i + 1) + '/' + schedules.length);
         }
-        lastResult = await post({ ...schedule, pinAuth: this.pinAuth });
+        lastResult = await post({ ...schedule, pinAuth: pinAuth });
       }
       return lastResult;
     }
 
-    return await post({ command, pinAuth: this.pinAuth });
+    return await post({ command, pinAuth: pinAuth });
   }
 
+  /**
+   * Fetches a fresh pin-auth token from the FCA MFA endpoint and returns it.
+   * Historically the token was stashed on `this.pinAuth` — but that made
+   * concurrent onStateChange handlers race against a shared field. The
+   * caller now owns the value and passes it to sendRemoteCommand explicitly.
+   *
+   * @returns {Promise<string>}
+   */
   async receivePinAuth() {
     if (!this.config.pin) {
       this.log.warn('No pin in instance settings');
@@ -1131,17 +1141,31 @@ class Fiat extends utils.Adapter {
         throw new Error('Get pin failed');
       }
       this.log.debug(JSON.stringify(response.data));
-      this.pinAuth = response.data.token;
+      // Validate the token strictly: MFA has been observed to return
+      // { token: "" } with expiry set, and the CPPLUS POST would then be
+      // rejected as "Wrong or missing request body". py-uconnect treats a
+      // missing token as a hard failure (api.py _pin_auth); do the same.
+      const token = response.data.token;
+      if (typeof token !== 'string' || token.length === 0) {
+        this.log.error(
+          'pinAuth: MFA response did not contain a usable token ' +
+            '(typeof=' +
+            typeof token +
+            ' len=' +
+            (token ? String(token).length : 0) +
+            ')',
+        );
+        throw new Error('pinAuth missing/empty');
+      }
       this.log.info(
-        'pinAuth: assigned this.pinAuth (typeof=' +
-          typeof this.pinAuth +
+        'pinAuth: obtained token typeof=' +
+          typeof token +
           ' len=' +
-          (this.pinAuth ? String(this.pinAuth).length : 0) +
+          token.length +
           ' expiry=' +
-          response.data.expiry +
-          ')',
+          response.data.expiry,
       );
-      return response.data;
+      return token;
     } catch (error) {
       const err = /** @type {any} */ (error);
       if (err && err.response && err.response.status === 403) {
