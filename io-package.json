@@ -30,23 +30,71 @@
         "zh-cn": "通过远程添加调度编辑 。 CPPLUS 语句"
       },
       "0.0.9": {
-        "en": "Add catch for disabled location"
+        "en": "Add catch for disabled location",
+        "de": "Fehlerbehandlung für deaktivierte Standortermittlung hinzugefügt",
+        "ru": "Добавлена обработка ошибок для отключённого определения местоположения",
+        "pt": "Adicionado tratamento de erro para localização desativada",
+        "nl": "Foutafhandeling toegevoegd voor uitgeschakelde locatie",
+        "fr": "Ajout d'une gestion d'erreur pour la localisation désactivée",
+        "it": "Aggiunta gestione errori per la posizione disabilitata",
+        "es": "Añadido manejo de errores para ubicación deshabilitada",
+        "pl": "Dodano obsługę błędów dla wyłączonej lokalizacji",
+        "uk": "Додано обробку помилок для вимкненого визначення місцезнаходження",
+        "zh-cn": "添加对已禁用位置的错误处理"
       },
       "0.0.8": {
-        "en": "Update installation dependency"
+        "en": "Update installation dependency",
+        "de": "Installationsabhängigkeit aktualisiert",
+        "ru": "Обновлена зависимость установки",
+        "pt": "Dependência de instalação atualizada",
+        "nl": "Installatie-afhankelijkheid bijgewerkt",
+        "fr": "Dépendance d'installation mise à jour",
+        "it": "Dipendenza di installazione aggiornata",
+        "es": "Dependencia de instalación actualizada",
+        "pl": "Zaktualizowano zależność instalacji",
+        "uk": "Оновлено залежність встановлення",
+        "zh-cn": "更新安装依赖项"
       },
       "0.0.7": {
-        "en": "Add Jeep Support"
+        "en": "Add Jeep Support",
+        "de": "Jeep-Unterstützung hinzugefügt",
+        "ru": "Добавлена поддержка Jeep",
+        "pt": "Adicionado suporte a Jeep",
+        "nl": "Jeep-ondersteuning toegevoegd",
+        "fr": "Support de Jeep ajouté",
+        "it": "Aggiunto supporto per Jeep",
+        "es": "Añadido soporte para Jeep",
+        "pl": "Dodano obsługę Jeep",
+        "uk": "Додано підтримку Jeep",
+        "zh-cn": "添加 Jeep 支持"
       },
       "0.0.6": {
-        "en": "Fix parsing bug"
+        "en": "Fix parsing bug",
+        "de": "Parsing-Fehler behoben",
+        "ru": "Исправлена ошибка парсинга",
+        "pt": "Corrigido erro de parsing",
+        "nl": "Parsing-fout opgelost",
+        "fr": "Correction d'un bug d'analyse",
+        "it": "Corretto bug di parsing",
+        "es": "Corregido error de análisis",
+        "pl": "Naprawiono błąd parsowania",
+        "uk": "Виправлено помилку парсингу",
+        "zh-cn": "修复解析错误"
       },
       "0.0.3": {
         "en": "Added precondition",
-        "de": "Vorklimatisierung hinzugefügt"
+        "de": "Vorklimatisierung hinzugefügt",
+        "ru": "Добавлена предварительная подготовка",
+        "pt": "Pré-condicionamento adicionado",
+        "nl": "Voorklimatisering toegevoegd",
+        "fr": "Préconditionnement ajouté",
+        "it": "Aggiunto precondizionamento",
+        "es": "Añadido preacondicionamiento",
+        "pl": "Dodano wstępne klimatyzowanie",
+        "uk": "Додано попереднє кондиціонування",
+        "zh-cn": "添加了预调节"
       }
     },
-    "title": "Fiat/Jeep",
     "titleLang": {
       "en": "Fiat/Jeep",
       "de": "Fiat/Jeep",
@@ -57,6 +105,7 @@
       "it": "Fiat/Jeep",
       "es": "Fiat/Jeep",
       "pl": "Fiat/Jeep",
+      "uk": "Fiat/Jeep",
       "zh-cn": "Fiat/Jeep"
     },
     "desc": {
@@ -69,7 +118,8 @@
       "it": "adattatore Fiat/Jeep",
       "es": "adaptador de Fiat/Jeep",
       "pl": "adapter Fiat/Jeep",
-      "zh-cn": "法定适配器"
+      "uk": "адаптер Fiat/Jeep",
+      "zh-cn": "Fiat/Jeep 适配器"
     },
     "authors": [
       "TA2k <tombox2020@gmail.com>"
@@ -79,9 +129,12 @@
       "500e",
       "jeep"
     ],
-    "license": "MIT",
+    "licenseInformation": {
+      "license": "MIT",
+      "type": "free"
+    },
+    "tier": 2,
     "platform": "Javascript/Node.js",
-    "main": "main.js",
     "icon": "fiat.png",
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.fiat/master/admin/fiat.png",
@@ -92,15 +145,17 @@
     "compact": true,
     "connectionType": "cloud",
     "dataSource": "poll",
-    "materialize": true,
+    "adminUI": {
+      "config": "materialize"
+    },
     "dependencies": [
       {
-        "js-controller": ">=3.0.0"
+        "js-controller": ">=6.0.11"
       }
     ],
     "globalDependencies": [
       {
-        "admin": ">=4.0.9"
+        "admin": ">=7.6.20"
       }
     ]
   },

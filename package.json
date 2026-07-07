@@ -11,7 +11,8 @@
   "keywords": [
     "fiat",
     "500e",
-    "jeep"
+    "jeep",
+    "ioBroker"
   ],
   "repository": {
     "type": "git",
@@ -32,7 +33,7 @@
     "@alcalzone/release-script-plugin-manual-review": "^5.2.0",
     "@eslint/js": "^10.0.1",
     "@iobroker/testing": "^5.2.2",
-    "@types/node": "^26.0.1",
+    "@types/node": "^22.0.0",
     "eslint": "^10.6.0",
     "globals": "^17.7.0",
     "typescript": "^6.0.3"
@@ -47,6 +48,9 @@
     "main.js"
   ],
   "main": "main.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test:js": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup).js}\"",
     "test:package": "mocha test/package --exit",

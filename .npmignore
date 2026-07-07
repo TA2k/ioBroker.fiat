@@ -23,3 +23,6 @@ admin/i18n
 
 # maintenance scripts
 maintenance/**
+
+# local reference material
+.references/
