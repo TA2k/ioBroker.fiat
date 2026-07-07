@@ -940,18 +940,90 @@ class Fiat extends utils.Adapter {
    * @param {ioBroker.StateValue} value
    */
   async sendRemoteCommand(vin, command, meta, value) {
-    /** @type {Record<string, any>} */
-    let data;
+    const url =
+      '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
+
+    // Small closure so the CPPLUS array path (loop over schedules) and every
+    // other command (single call) can share the same POST + logging + fallback
+    // logic.  Also handles the pinAuth-redacted body preview.
+    /** @param {Record<string, any>} data */
+    const post = async (data) => {
+      const preview = (() => {
+        try {
+          const clone = { ...data };
+          if (clone.pinAuth) {
+            clone.pinAuth = '<redacted len=' + String(clone.pinAuth).length + '>';
+          }
+          return JSON.stringify(clone);
+        } catch {
+          return '(unstringifiable)';
+        }
+      })();
+      this.log.info(
+        'Remote: cmd=' +
+          command +
+          ' method=POST url=https://channels.sdpr-01.fcagcv.com' +
+          url +
+          ' body=' +
+          preview,
+      );
+      try {
+        const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
+          swallow404: false,
+        });
+        if (result && result.responseStatus !== 'pending') {
+          this.log.warn(JSON.stringify(result));
+        }
+        return result;
+      } catch (error) {
+        const err = /** @type {any} */ (error);
+        const status = err && err.response && err.response.status;
+        if (meta.fallback && (status === 403 || status === 404)) {
+          this.log.warn(
+            command +
+              ' returned ' +
+              status +
+              ', retrying with ' +
+              meta.fallback.command +
+              ' (' +
+              meta.fallback.apiVersion +
+              ')',
+          );
+          const fbUrl =
+            '/' +
+            meta.fallback.apiVersion +
+            '/accounts/' +
+            this.UID +
+            '/vehicles/' +
+            vin +
+            '/' +
+            meta.fallback.segment +
+            '/';
+          const fbData = { ...data, command: meta.fallback.command };
+          this.log.info('Remote fallback: url=https://channels.sdpr-01.fcagcv.com' + fbUrl);
+          return await this.getVehicleStatus(vin, fbUrl, null, JSON.stringify(fbData), {
+            swallow404: false,
+          });
+        }
+        throw err;
+      }
+    };
+
     if (command === 'CPPLUS') {
-      // py-uconnect set_charge_schedule():  data = schedule | {"pinAuth": ...}
-      // The state value is expected to be a single flat schedule object
-      // (or its JSON-string representation). The historical array default
-      // is not accepted by /v4/.../ev/schedule/.
-      let parsed;
+      // py-uconnect set_charge_schedule():  data = schedule | {"pinAuth": ...}.
+      // /v4/.../ev/schedule/ expects one flat schedule object per POST.
+      //
+      // For backward compatibility we accept both shapes users may already
+      // have stored in remote.CPPLUS:
+      //   * single schedule object  -> one POST (py-uconnect shape)
+      //   * array of schedules      -> one POST per element (legacy adapter
+      //                                default written as [{CHARGE},{CLIMATE},
+      //                                {CHARGE}])
       if (value === null || value === undefined) {
         this.log.error('CPPLUS: schedule state is empty');
         return;
       }
+      let parsed;
       if (typeof value === 'object') {
         parsed = value;
       } else {
@@ -963,82 +1035,34 @@ class Fiat extends utils.Adapter {
           return;
         }
       }
+
+      const schedules = Array.isArray(parsed) ? parsed : [parsed];
       if (Array.isArray(parsed)) {
-        this.log.error(
-          'CPPLUS: /v4 schedule endpoint expects a single schedule object, not an array. ' +
-            'Set remote.CPPLUS to a single {scheduleType, startTime, endTime, ...} object.',
+        this.log.info(
+          'CPPLUS: transforming legacy array of ' +
+            schedules.length +
+            ' schedules into ' +
+            schedules.length +
+            ' sequential POSTs',
         );
-        return;
       }
-      data = { ...parsed, pinAuth: this.pinAuth };
-    } else {
-      data = { command, pinAuth: this.pinAuth };
+
+      let lastResult;
+      for (let i = 0; i < schedules.length; i++) {
+        const schedule = schedules[i];
+        if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) {
+          this.log.error('CPPLUS: entry ' + i + ' is not a schedule object, skipping');
+          continue;
+        }
+        if (schedules.length > 1) {
+          this.log.info('CPPLUS: sending schedule ' + (i + 1) + '/' + schedules.length);
+        }
+        lastResult = await post({ ...schedule, pinAuth: this.pinAuth });
+      }
+      return lastResult;
     }
 
-    const url =
-      '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
-    // Log the outbound remote command with a pinAuth-redacted body preview
-    // so failures like "Wrong or missing request body" can be diagnosed
-    // from the ioBroker log alone.
-    const preview = (() => {
-      try {
-        const clone = { ...data };
-        if (clone.pinAuth) {
-          clone.pinAuth = '<redacted len=' + String(clone.pinAuth).length + '>';
-        }
-        return JSON.stringify(clone);
-      } catch {
-        return '(unstringifiable)';
-      }
-    })();
-    this.log.info(
-      'Remote: cmd=' +
-        command +
-        ' method=POST url=https://channels.sdpr-01.fcagcv.com' +
-        url +
-        ' body=' +
-        preview,
-    );
-    try {
-      const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
-        swallow404: false,
-      });
-      if (result && result.responseStatus !== 'pending') {
-        this.log.warn(JSON.stringify(result));
-      }
-      return result;
-    } catch (error) {
-      const err = /** @type {any} */ (error);
-      const status = err && err.response && err.response.status;
-      if (meta.fallback && (status === 403 || status === 404)) {
-        this.log.warn(
-          command +
-            ' returned ' +
-            status +
-            ', retrying with ' +
-            meta.fallback.command +
-            ' (' +
-            meta.fallback.apiVersion +
-            ')',
-        );
-        const fbUrl =
-          '/' +
-          meta.fallback.apiVersion +
-          '/accounts/' +
-          this.UID +
-          '/vehicles/' +
-          vin +
-          '/' +
-          meta.fallback.segment +
-          '/';
-        const fbData = { ...data, command: meta.fallback.command };
-        this.log.info('Remote fallback: url=https://channels.sdpr-01.fcagcv.com' + fbUrl);
-        return await this.getVehicleStatus(vin, fbUrl, null, JSON.stringify(fbData), {
-          swallow404: false,
-        });
-      }
-      throw err;
-    }
+    return await post({ command, pinAuth: this.pinAuth });
   }
 
   async receivePinAuth() {

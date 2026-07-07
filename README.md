@@ -24,6 +24,37 @@ Die Fiat oder Jeep App Mail und Passwort eingeben.
 
 fiat.0.id.remote auf true setzen steuert den jeweiligen Befehl
 
+### Ladeplan (remote.CPPLUS)
+
+Der State `<VIN>.remote.CPPLUS` erwartet als Wert ein einzelnes JSON-Objekt
+(`scheduleType` `"CHARGE"` oder `"CLIMATE"`), das gegen
+`/v4/.../ev/schedule/` (py-uconnect-Format) gesendet wird:
+
+```json
+{
+  "cabinPriority": false,
+  "chargeToFull": false,
+  "enableScheduleType": true,
+  "endTime": "13:05",
+  "repeatSchedule": true,
+  "scheduleType": "CHARGE",
+  "scheduledDays": {
+    "friday": true,
+    "monday": true,
+    "saturday": true,
+    "sunday": true,
+    "thursday": true,
+    "tuesday": true,
+    "wednesday": true
+  },
+  "startTime": "13:00"
+}
+```
+
+Das ältere Array-Format aus 0.0.10 wird weiterhin akzeptiert. Der Adapter
+zerlegt es in einzelne Requests und sendet für jedes Element im Array einen
+POST an den Schedule-Endpoint.
+
 ## Diskussion und Fragen:
 
 https://forum.iobroker.net/topic/46378/test-adapter-fiat-v0-0-x
