@@ -958,27 +958,24 @@ class Fiat extends utils.Adapter {
     // logic.  Also handles the pinAuth-redacted body preview.
     /** @param {Record<string, any>} data */
     const post = async (data) => {
-      const preview = (() => {
-        try {
-          const clone = { ...data };
-          if (clone.pinAuth) {
-            clone.pinAuth = '<redacted len=' + String(clone.pinAuth).length + '>';
-          }
-          return JSON.stringify(clone);
-        } catch {
-          return '(unstringifiable)';
-        }
-      })();
+      const body = JSON.stringify(data);
+      // Log the actual body sent to axios (not a clone), with the token
+      // masked. Uses a regex on the serialised body so we cannot possibly
+      // print a body that differs from what goes on the wire.
+      const bodyPreview = body.replace(
+        /"pinAuth":"([^"]*)"/,
+        (_m, tok) => '"pinAuth":"<len=' + tok.length + '>"',
+      );
       this.log.info(
         'Remote: cmd=' +
           command +
           ' method=POST url=https://channels.sdpr-01.fcagcv.com' +
           url +
           ' body=' +
-          preview,
+          bodyPreview,
       );
       try {
-        const result = await this.getVehicleStatus(vin, url, null, JSON.stringify(data), {
+        const result = await this.getVehicleStatus(vin, url, null, body, {
           swallow404: false,
         });
         if (result && result.responseStatus !== 'pending') {
