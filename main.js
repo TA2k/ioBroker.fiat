@@ -942,6 +942,14 @@ class Fiat extends utils.Adapter {
   async sendRemoteCommand(vin, command, meta, value) {
     const url =
       '/' + meta.apiVersion + '/accounts/' + this.UID + '/vehicles/' + vin + '/' + meta.segment + '/';
+    this.log.info(
+      'sendRemoteCommand: cmd=' +
+        command +
+        ' this.pinAuth typeof=' +
+        typeof this.pinAuth +
+        ' len=' +
+        (this.pinAuth ? String(this.pinAuth).length : 0),
+    );
 
     // Small closure so the CPPLUS array path (loop over schedules) and every
     // other command (single call) can share the same POST + logging + fallback
@@ -1124,6 +1132,15 @@ class Fiat extends utils.Adapter {
       }
       this.log.debug(JSON.stringify(response.data));
       this.pinAuth = response.data.token;
+      this.log.info(
+        'pinAuth: assigned this.pinAuth (typeof=' +
+          typeof this.pinAuth +
+          ' len=' +
+          (this.pinAuth ? String(this.pinAuth).length : 0) +
+          ' expiry=' +
+          response.data.expiry +
+          ')',
+      );
       return response.data;
     } catch (error) {
       const err = /** @type {any} */ (error);
