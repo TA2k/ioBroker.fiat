@@ -26,34 +26,36 @@ fiat.0.id.remote auf true setzen steuert den jeweiligen Befehl
 
 ### Ladeplan (remote.CPPLUS)
 
-Der State `<VIN>.remote.CPPLUS` erwartet als Wert ein einzelnes JSON-Objekt
-(`scheduleType` `"CHARGE"` oder `"CLIMATE"`), das gegen
-`/v4/.../ev/schedule/` (py-uconnect-Format) gesendet wird:
+Der State `<VIN>.remote.CPPLUS` erwartet ein Array von Schedule-Objekten
+(auch ein einzelnes Objekt wird akzeptiert und automatisch in ein
+Array verpackt). Der Adapter baut daraus den Wrapper-Body wie die
+offizielle My-Uconnect-App:
 
 ```json
 {
-  "cabinPriority": false,
-  "chargeToFull": false,
-  "enableScheduleType": true,
-  "endTime": "13:05",
-  "repeatSchedule": true,
-  "scheduleType": "CHARGE",
-  "scheduledDays": {
-    "friday": true,
-    "monday": true,
-    "saturday": true,
-    "sunday": true,
-    "thursday": true,
-    "tuesday": true,
-    "wednesday": true
-  },
-  "startTime": "13:00"
+  "command": "CPPLUS",
+  "pinAuth": "…",
+  "schedules": [
+    {
+      "cabinPriority": false,
+      "chargeToFull": false,
+      "enableScheduleType": true,
+      "endTime": "13:05",
+      "repeatSchedule": true,
+      "scheduleType": "CHARGE",
+      "scheduledDays": {
+        "friday": true, "monday": true, "saturday": true, "sunday": true,
+        "thursday": true, "tuesday": true, "wednesday": true
+      },
+      "startTime": "13:00"
+    }
+  ]
 }
 ```
 
-Das ältere Array-Format aus 0.0.10 wird weiterhin akzeptiert. Der Adapter
-zerlegt es in einzelne Requests und sendet für jedes Element im Array einen
-POST an den Schedule-Endpoint.
+Gesendet wird an `/v2/accounts/{UID}/vehicles/{VIN}/ev/schedule/` — das
+Body-Format ist aus `ScheduleV2Model$Post$Request` der offiziellen App
+(APK 1.99.701) übernommen.
 
 ## Diskussion und Fragen:
 

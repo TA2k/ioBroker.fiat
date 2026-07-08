@@ -150,11 +150,12 @@ class Fiat extends utils.Adapter {
         segment: 'ev/chargenow',
         fallback: { apiVersion: 'v4', segment: 'ev/chargenow', command: 'START_CHARGE' },
       },
-      // CPPLUS: /v4/.../ev/schedule/ per py-uconnect set_charge_schedule().
-      // Payload is a single flat schedule object (no `command` key) merged
-      // with pinAuth. Array form is rejected by v4 with "Wrong or missing
-      // request body".
-      CPPLUS: { apiVersion: 'v4', segment: 'ev/schedule' },
+      // CPPLUS: /v2/.../ev/schedule/ with body { command, pinAuth, schedules[] }
+      // as decoded from the APK model ScheduleV2Model$Post$Request. v3/v4
+      // endpoints exist in the APK too but use a different body layout
+      // (chargeSchedulesV3/V4 arrays); we start with v2 which the historical
+      // adapter already used with the array-of-schedules state default.
+      CPPLUS: { apiVersion: 'v2', segment: 'ev/schedule' },
     };
     return map[command];
   }
@@ -710,24 +711,62 @@ class Fiat extends utils.Adapter {
           name: 'Change Schedule',
           role: 'json',
           type: 'string',
-          def: `{
-    "cabinPriority": false,
-    "chargeToFull": false,
-    "enableScheduleType": true,
-    "endTime": "13:05",
-    "repeatSchedule": true,
-    "scheduleType": "CHARGE",
-    "scheduledDays": {
-        "friday": true,
-        "monday": true,
-        "saturday": true,
-        "sunday": true,
-        "thursday": true,
-        "tuesday": true,
-        "wednesday": true
+          def: `[
+    {
+        "cabinPriority": false,
+        "chargeToFull": false,
+        "enableScheduleType": true,
+        "endTime": "13:05",
+        "repeatSchedule": true,
+        "scheduleType": "CHARGE",
+        "scheduledDays": {
+            "friday": true,
+            "monday": true,
+            "saturday": true,
+            "sunday": true,
+            "thursday": true,
+            "tuesday": true,
+            "wednesday": true
+        },
+        "startTime": "13:00"
     },
-    "startTime": "13:00"
-}`,
+    {
+        "cabinPriority": true,
+        "chargeToFull": false,
+        "enableScheduleType": false,
+        "endTime": "11:45",
+        "repeatSchedule": false,
+        "scheduleType": "CLIMATE",
+        "scheduledDays": {
+            "friday": false,
+            "monday": false,
+            "saturday": false,
+            "sunday": false,
+            "thursday": false,
+            "tuesday": false,
+            "wednesday": false
+        },
+        "startTime": "11:45"
+    },
+    {
+        "cabinPriority": false,
+        "chargeToFull": false,
+        "enableScheduleType": false,
+        "endTime": "00:00",
+        "repeatSchedule": true,
+        "scheduleType": "CHARGE",
+        "scheduledDays": {
+            "friday": false,
+            "monday": false,
+            "saturday": false,
+            "sunday": false,
+            "thursday": false,
+            "tuesday": false,
+            "wednesday": false
+        },
+        "startTime": "00:00"
+    }
+]`,
         },
       ];
       for (const remote of remoteArray) {
@@ -1036,12 +1075,10 @@ class Fiat extends utils.Adapter {
 
     if (command === 'CPPLUS') {
       // Diagnostic: fetch the current schedule so we can compare its exact
-      // field shape against what we're about to POST. py-uconnect exposes
-      // this as get_charge_schedules(); v4 accepts GET on the same URL as
-      // POST.
+      // field shape against what we're about to POST.
       try {
         const current = await this.getVehicleStatus(vin, url, null, undefined, { swallow404: false });
-        this.log.info('CPPLUS [GET current schedule] ' + JSON.stringify(current).slice(0, 800));
+        this.log.info('CPPLUS [GET current schedule] ' + JSON.stringify(current));
       } catch (error) {
         const err = /** @type {any} */ (error);
         this.log.warn(
@@ -1052,15 +1089,12 @@ class Fiat extends utils.Adapter {
         );
       }
 
-      // py-uconnect set_charge_schedule():  data = schedule | {"pinAuth": ...}.
-      // /v4/.../ev/schedule/ expects one flat schedule object per POST.
-      //
-      // For backward compatibility we accept both shapes users may already
-      // have stored in remote.CPPLUS:
-      //   * single schedule object  -> one POST (py-uconnect shape)
-      //   * array of schedules      -> one POST per element (legacy adapter
-      //                                default written as [{CHARGE},{CLIMATE},
-      //                                {CHARGE}])
+      // Body shape from the official My Uconnect APK 1.99.701:
+      //   ScheduleV2Model$Post$Request.smali  →  { command, pinAuth, schedules[] }
+      // The v3 request additionally has chargeSchedulesV3/V4 array fields, but
+      // for v2 (which is the working endpoint on current EU 500e/Jeep vehicles)
+      // the wrapper is a simple {command, pinAuth, schedules[]}. py-uconnect's
+      // flat schedule|pinAuth shape is REJECTED by this backend.
       if (value === null || value === undefined) {
         this.log.error('CPPLUS: schedule state is empty');
         return;
@@ -1078,48 +1112,12 @@ class Fiat extends utils.Adapter {
         }
       }
 
+      // Accept both shapes: legacy array (as stored by 0.0.10 default) and
+      // a single schedule object (as documented in the current README).
       const schedules = Array.isArray(parsed) ? parsed : [parsed];
-      if (Array.isArray(parsed)) {
-        this.log.info(
-          'CPPLUS: transforming legacy array of ' +
-            schedules.length +
-            ' schedules into ' +
-            schedules.length +
-            ' sequential POSTs',
-        );
-      }
-
-      let lastResult;
-      for (let i = 0; i < schedules.length; i++) {
-        const schedule = schedules[i];
-        if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) {
-          this.log.error('CPPLUS: entry ' + i + ' is not a schedule object, skipping');
-          continue;
-        }
-        if (schedules.length > 1) {
-          this.log.info('CPPLUS: sending schedule ' + (i + 1) + '/' + schedules.length);
-        }
-        this.log.info(
-          'CPPLUS [before post] pinAuth typeof=' +
-            typeof pinAuth +
-            ' len=' +
-            (pinAuth ? String(pinAuth).length : 0) +
-            ' head=' +
-            String(pinAuth || '').slice(0, 20),
-        );
-        lastResult = await post({ ...schedule, pinAuth: pinAuth });
-      }
-      return lastResult;
+      return await post({ command: 'CPPLUS', pinAuth: pinAuth, schedules: schedules });
     }
 
-    this.log.info(
-      'default cmd [before post] pinAuth typeof=' +
-        typeof pinAuth +
-        ' len=' +
-        (pinAuth ? String(pinAuth).length : 0) +
-        ' head=' +
-        String(pinAuth || '').slice(0, 20),
-    );
     return await post({ command, pinAuth: pinAuth });
   }
 
