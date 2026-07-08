@@ -840,7 +840,16 @@ class Fiat extends utils.Adapter {
       this.log.error(String(err));
       this.log.error('Request failed: ' + path);
       if (err && err.response) {
-        this.log.error(JSON.stringify(err.response.data));
+        this.log.error(
+          'Response status=' +
+            err.response.status +
+            ' statusText=' +
+            err.response.statusText +
+            ' headers=' +
+            JSON.stringify(err.response.headers || {}) +
+            ' data=' +
+            JSON.stringify(err.response.data),
+        );
       }
       throw err;
     }
@@ -1026,6 +1035,23 @@ class Fiat extends utils.Adapter {
     };
 
     if (command === 'CPPLUS') {
+      // Diagnostic: fetch the current schedule so we can compare its exact
+      // field shape against what we're about to POST. py-uconnect exposes
+      // this as get_charge_schedules(); v4 accepts GET on the same URL as
+      // POST.
+      try {
+        const current = await this.getVehicleStatus(vin, url, null, undefined, { swallow404: false });
+        this.log.info('CPPLUS [GET current schedule] ' + JSON.stringify(current).slice(0, 800));
+      } catch (error) {
+        const err = /** @type {any} */ (error);
+        this.log.warn(
+          'CPPLUS [GET current schedule failed] http=' +
+            (err && err.response && err.response.status) +
+            ' data=' +
+            (err && err.response ? JSON.stringify(err.response.data) : ''),
+        );
+      }
+
       // py-uconnect set_charge_schedule():  data = schedule | {"pinAuth": ...}.
       // /v4/.../ev/schedule/ expects one flat schedule object per POST.
       //
