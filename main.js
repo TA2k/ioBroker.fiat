@@ -1074,27 +1074,6 @@ class Fiat extends utils.Adapter {
     };
 
     if (command === 'CPPLUS') {
-      // Diagnostic: fetch the current schedule so we can compare its exact
-      // field shape against what we're about to POST.
-      try {
-        const current = await this.getVehicleStatus(vin, url, null, undefined, { swallow404: false });
-        this.log.info('CPPLUS [GET current schedule] ' + JSON.stringify(current));
-      } catch (error) {
-        const err = /** @type {any} */ (error);
-        this.log.warn(
-          'CPPLUS [GET current schedule failed] http=' +
-            (err && err.response && err.response.status) +
-            ' data=' +
-            (err && err.response ? JSON.stringify(err.response.data) : ''),
-        );
-      }
-
-      // Body shape from the official My Uconnect APK 1.99.701:
-      //   ScheduleV2Model$Post$Request.smali  →  { command, pinAuth, schedules[] }
-      // The v3 request additionally has chargeSchedulesV3/V4 array fields, but
-      // for v2 (which is the working endpoint on current EU 500e/Jeep vehicles)
-      // the wrapper is a simple {command, pinAuth, schedules[]}. py-uconnect's
-      // flat schedule|pinAuth shape is REJECTED by this backend.
       if (value === null || value === undefined) {
         this.log.error('CPPLUS: schedule state is empty');
         return;
@@ -1111,11 +1090,48 @@ class Fiat extends utils.Adapter {
           return;
         }
       }
+      // Accept both shapes: a single schedule object or an array of schedules.
+      const userSchedules = Array.isArray(parsed) ? parsed : [parsed];
 
-      // Accept both shapes: legacy array (as stored by 0.0.10 default) and
-      // a single schedule object (as documented in the current README).
-      const schedules = Array.isArray(parsed) ? parsed : [parsed];
-      return await post({ command: 'CPPLUS', pinAuth: pinAuth, schedules: schedules });
+      // The vehicle has a FIXED number of schedule slots (3 on the 500e). The
+      // official app (APK ScheduleV2ViewModel.saveSchedules) always POSTs the
+      // COMPLETE slot array back, never a partial one — a partial array is
+      // accepted with responseStatus:pending but silently discarded by the
+      // car. So we GET the current slots, overwrite the leading ones with the
+      // user's schedules, and keep the remaining slots untouched. Slot order
+      // in the array is the slot identity.
+      let slots = userSchedules;
+      try {
+        const current = await this.getVehicleStatus(vin, url, null, undefined, { swallow404: false });
+        const currentSchedules =
+          current && Array.isArray(current.schedules) ? current.schedules : [];
+        this.log.info(
+          'CPPLUS: server has ' +
+            currentSchedules.length +
+            ' slots, user provided ' +
+            userSchedules.length,
+        );
+        if (currentSchedules.length > 0) {
+          // Start from the server's slots (preserves count + empty-slot shape),
+          // overwrite from the front with the user's schedules.
+          slots = currentSchedules.map((slot, i) => (i < userSchedules.length ? userSchedules[i] : slot));
+          // If the user supplied MORE schedules than the vehicle has slots,
+          // append the extras (best effort).
+          if (userSchedules.length > currentSchedules.length) {
+            slots = slots.concat(userSchedules.slice(currentSchedules.length));
+          }
+        }
+      } catch (error) {
+        const err = /** @type {any} */ (error);
+        this.log.warn(
+          'CPPLUS: could not GET current slots (' +
+            (err && err.response && err.response.status) +
+            '), sending user schedules as-is',
+        );
+      }
+
+      // Body shape from APK ScheduleV2Model$Post$Request: {command, pinAuth, schedules[]}
+      return await post({ command: 'CPPLUS', pinAuth: pinAuth, schedules: slots });
     }
 
     return await post({ command, pinAuth: pinAuth });
